@@ -37,6 +37,9 @@ cd arxiv-daily-summarizer
 | `SMTP_SERVER` | SMTP 服务器地址（可选） | `smtp.gmail.com` |
 | `SMTP_PORT` | SMTP 端口（可选） | `587` |
 
+#### Api 配置说明
+本项目使用的是 ModelScope 的免费 api，你也可以访问官网[魔塔社区](https://www.modelscope.cn/)申请，或者换成你自己的 api 。
+
 #### 📮 邮箱配置说明
 
 **Gmail 用户：**
