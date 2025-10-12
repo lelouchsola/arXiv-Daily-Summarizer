@@ -20,7 +20,7 @@
 ### 1. Fork or Clone This Repository
 
 ```bash
-git clone https://github.com/your-username/arxiv-daily-summarizer.git
+git clone https://github.com/RunRiotComeOn/arXiv-Daily-Summarizer.git
 cd arxiv-daily-summarizer
 ```
 

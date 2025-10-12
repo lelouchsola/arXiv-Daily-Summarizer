@@ -20,7 +20,7 @@
 ### 1. Fork 或克隆此仓库
 
 ```bash
-git clone https://github.com/你的用户名/arxiv-daily-summarizer.git
+git clone https://github.com/RunRiotComeOn/arXiv-Daily-Summarizer.git
 cd arxiv-daily-summarizer
 ```
 
