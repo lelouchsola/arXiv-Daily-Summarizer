@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-arXiv Daily Paper Digest Script
-Fetches latest papers from arXiv, generates AI summaries using DeepSeek, and sends via email
-"""
-
 import os
 import smtplib
 import arxiv

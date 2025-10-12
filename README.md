@@ -159,6 +159,9 @@ export $(cat .env | xargs)
 
 # 3. 运行脚本
 python fetch_papers.py
+
+# 4. 如果你需要测试 arXiv 可达性
+python test_arxiv.py
 ```
 
 ## 📊 质量评分系统

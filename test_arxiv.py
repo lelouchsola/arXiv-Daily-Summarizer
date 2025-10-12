@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-测试 arXiv API 连接和可达性
-"""
-
 import arxiv
 import requests
 from datetime import datetime
