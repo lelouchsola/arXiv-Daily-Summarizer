@@ -119,6 +119,7 @@ def calculate_paper_quality_score(paper):
         'end-to-end', 'reinforcement learning', 'machine learning', 'data-driven',
         # 电力与能源系统
         'power system', 'energy system', 'smart grid', 'microgrid', 
+        'hydrogen', 'power-to-gas', 'p2g', 'electrolyzer', 'fuel cell',
         'unit commitment', 'economic dispatch', 'optimal power flow', 'opf',
         # 灵活性与优化
         'flexibility', 'flexible resource', 'demand response', 'energy storage',
@@ -319,6 +320,7 @@ def summarize_paper(paper, language='zh'):
 2. 提出的数学模型、优化算法或主要创新点（2-3句话，如果涉及decision-focused或机器学习，请着重说明）
 3. 实验验证及核心结论（1-2句话）
 4. 对现实电力/能源系统的潜在应用价值（1句话）
+5. 领域判定：明确说明本文是否与“电力系统优化”相关（请以【强相关】、【弱相关】或【不相关】开头，并用一句话简述理由）
 
 论文标题：{paper['title']}
 
