@@ -12,54 +12,54 @@ from difflib import SequenceMatcher
 # ========== Configuration ==========
 
 # arXiv search configuration
-CATEGORIES = ['math.OC', 'eess.SY']  # 修改为你需要的两个领域
-MAX_RESULTS = 5  # Number of papers to send daily
-MIN_PAPERS_PER_CATEGORY = 1  # Minimum papers per category to ensure balance
+CATEGORIES = ['math.OC', 'eess.SY']  # 你的专属研究领域
+MAX_RESULTS = 5  # 每天最多推送的论文数量（过滤后都是精选，可适当调低）
+MIN_PAPERS_PER_CATEGORY = 1  
+MAX_AGE_HOURS = 48  # 只抓取过去 48 小时内的论文（建议 48 小时以覆盖 arXiv 周末不更新的情况）
 
 # Language configuration
-# Supported values: 'zh' (Chinese), 'en' (English), 'both' (Bilingual)
-EMAIL_LANGUAGE = os.environ.get('EMAIL_LANGUAGE', 'zh')  # Default to Chinese
+EMAIL_LANGUAGE = os.environ.get('EMAIL_LANGUAGE', 'zh')  # 默认中文摘要
 
 # DeepSeek API configuration (已修改为 DeepSeek 官方配置)
 DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
 DEEPSEEK_BASE_URL = 'https://api.deepseek.com'
 DEEPSEEK_MODEL = 'deepseek-chat' 
 
-# Email configuration (已将默认值修改为 163 邮箱配置)
+# Email configuration (已适配 163 邮箱默认配置)
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL')
-SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD')
+SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD')  # 注意：这里必须填 163 邮箱的授权码
 RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL')
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.163.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '465'))
 
 # Quality filtering thresholds
-MIN_ABSTRACT_LENGTH = 100  # Minimum abstract length (characters)
-SIMILARITY_THRESHOLD = 0.85  # Title similarity threshold for duplicate detection
+MIN_ABSTRACT_LENGTH = 100  
+SIMILARITY_THRESHOLD = 0.85  
 
 # Language text templates
 TEXT_TEMPLATES = {
     'zh': {
-        'title': 'arXiv 每日论文推送',
-        'date_notice': '论文日期提醒',
+        'title': 'arXiv 每日论文精选推送',
+        'date_notice': '论文时效说明',
         'today': '今天',
         'yesterday': '昨天',
         'days_ago': '天前',
         'published_today': '<strong>{count} 篇</strong>是今天发布',
         'published_yesterday': '<strong>{count} 篇</strong>是昨天发布',
-        'published_older_multi': '<strong>{count} 篇</strong>是 2 天及更早前发布（可能已读过）',
-        'notice_text': '本次推送的 {total} 篇论文中，{parts}。',
-        'new_today': '今日新发布',
+        'published_older_multi': '<strong>{count} 篇</strong>是 2 天及更早前发布',
+        'notice_text': '本次推送的 {total} 篇最新论文中，{parts}。',
+        'new_today': '今日首发',
         'yesterday_label': '昨日发布',
         'days_ago_label': '{days} 天前',
-        'high_quality': '⭐ 高质量',
+        'high_quality': '⭐ 高度契合',
         'authors': '作者',
         'published': '发布日期',
         'categories': '分类',
-        'quality_score': '质量评分',
+        'quality_score': '契合度评分',
         'ai_summary': 'AI 摘要',
         'view_pdf': '查看 PDF',
-        'footer_auto': '本邮件由 arXiv Daily Summarizer 自动生成',
-        'footer_powered': '由 DeepSeek AI 提供摘要服务'
+        'footer_auto': '本邮件由专属定制版 arXiv Daily Summarizer 自动生成',
+        'footer_powered': '由 DeepSeek-V3 提供摘要服务'
     },
     'en': {
         'title': 'arXiv Daily Paper Digest',
@@ -69,28 +69,31 @@ TEXT_TEMPLATES = {
         'days_ago': 'days ago',
         'published_today': '<strong>{count} papers</strong> published today',
         'published_yesterday': '<strong>{count} papers</strong> published yesterday',
-        'published_older_multi': '<strong>{count} papers</strong> published 2+ days ago (may have been read)',
+        'published_older_multi': '<strong>{count} papers</strong> published 2+ days ago',
         'notice_text': 'Of the {total} papers in this digest, {parts}.',
         'new_today': 'NEW TODAY',
         'yesterday_label': 'YESTERDAY',
         'days_ago_label': '{days} DAYS AGO',
-        'high_quality': '⭐ HIGH QUALITY',
+        'high_quality': '⭐ HIGH MATCH',
         'authors': 'Authors',
         'published': 'Published',
         'categories': 'Categories',
-        'quality_score': 'Quality Score',
+        'quality_score': 'Match Score',
         'ai_summary': 'AI Summary',
         'view_pdf': 'View PDF',
-        'footer_auto': 'Generated automatically by arXiv Daily Summarizer',
-        'footer_powered': 'Powered by DeepSeek AI'
+        'footer_auto': 'Generated automatically by Custom arXiv Daily Summarizer',
+        'footer_powered': 'Powered by DeepSeek-V3'
     }
 }
 
 
 def calculate_paper_quality_score(paper):
+    """
+    为你定制的质量与契合度打分系统
+    """
     score = 0.0
     
-    # Factor 1: Abstract length
+    # 维度 1: 摘要长度 (过滤水文)
     abstract_length = len(paper.get('abstract', ''))
     if abstract_length > 500:
         score += 2.0
@@ -99,42 +102,46 @@ def calculate_paper_quality_score(paper):
     elif abstract_length < MIN_ABSTRACT_LENGTH:
         score -= 2.0
     
-    # Factor 2: Number of authors
+    # 维度 2: 作者数量
     num_authors = len(paper.get('authors', '').split(','))
     if 3 <= num_authors <= 8:
         score += 1.0
     elif num_authors > 8:
         score += 0.5
     
-    # Factor 3: Title characteristics
+    # 维度 3: 核心关键词 (已为你替换为电力系统与学习优化方向)
     title = paper.get('title', '').lower()
+    abstract = paper.get('abstract', '').lower()
+    
     important_keywords = [
-        'novel', 'efficient', 'state-of-the-art', 'breakthrough', 'improved',
-        'transformer', 'attention', 'neural', 'deep learning', 'framework',
-        'benchmark', 'dataset', 'evaluation', 'survey', 'review'
+        # 你的核心交叉领域
+        'learn to optimize', 'decision-focused', 'predict-and-optimize', 
+        'end-to-end', 'reinforcement learning', 'machine learning', 'data-driven',
+        # 电力与能源系统
+        'power system', 'energy system', 'smart grid', 'microgrid', 
+        'unit commitment', 'economic dispatch', 'optimal power flow', 'opf',
+        # 灵活性与优化
+        'flexibility', 'flexible resource', 'demand response', 'energy storage',
+        'renewable', 'stochastic optimization', 'robust optimization',
+        # 学术通用词汇
+        'novel', 'efficient', 'framework', 'state-of-the-art'
     ]
+    
+    # 标题命中加分权重高
     for keyword in important_keywords:
         if keyword in title:
+            score += 1.5
+        # 摘要命中也给予一定加分
+        elif keyword in abstract:
             score += 0.5
     
+    # 惩罚过短或过长的标题
     title_words = len(title.split())
     if title_words < 5:
         score -= 0.5
     elif title_words > 25:
         score -= 0.3
-    
-    # Factor 4: Recency bonus
-    now = datetime.now(paper['published'].tzinfo)
-    days_old = (now - paper['published']).days
-    if days_old == 0:
-        score += 3.0
-    elif days_old == 1:
-        score += 1.5
-    elif days_old == 2:
-        score += 0.5
-    else:
-        score -= (days_old - 2) * 0.3
-    
+        
     return score
 
 
@@ -160,16 +167,16 @@ def remove_duplicate_papers(papers):
         for existing_paper in filtered_papers:
             similarity = calculate_title_similarity(paper['title'], existing_paper['title'])
             if similarity >= SIMILARITY_THRESHOLD:
-                print(f"  🔄 Detected similar paper (similarity: {similarity:.2f}):")
-                print(f"     Original: {existing_paper['title'][:60]}...")
-                print(f"     Duplicate: {paper['title'][:60]}...")
+                print(f"  🔄 发现相似论文 (相似度: {similarity:.2f}):")
+                print(f"     已存在: {existing_paper['title'][:60]}...")
+                print(f"     重复项: {paper['title'][:60]}...")
                 
                 if paper.get('quality_score', 0) > existing_paper.get('quality_score', 0):
                     filtered_papers.remove(existing_paper)
                     filtered_papers.append(paper)
-                    print(f"     → Kept the higher quality version")
+                    print(f"     → 保留了高分版本")
                 else:
-                    print(f"     → Skipped duplicate")
+                    print(f"     → 忽略重复项")
                 
                 is_duplicate = True
                 break
@@ -183,6 +190,7 @@ def remove_duplicate_papers(papers):
 def get_latest_papers():
     print(f"🔍 Searching for latest papers on arXiv...")
     print(f"📚 Categories: {', '.join(CATEGORIES)}")
+    print(f"⏳ Time filter: Last {MAX_AGE_HOURS} hours")
     
     client = arxiv.Client()
     papers_by_category = defaultdict(list)
@@ -193,16 +201,26 @@ def get_latest_papers():
         try:
             search = arxiv.Search(
                 query=f'cat:{category}',
-                max_results=MAX_RESULTS * 2,
+                max_results=MAX_RESULTS * 3,  # 多抓取一些用于时间过滤和打分筛选
                 sort_by=arxiv.SortCriterion.SubmittedDate,
                 sort_order=arxiv.SortOrder.Descending
             )
             
             results = list(client.results(search))
-            print(f"  API returned {len(results)} papers")
+            print(f"  API 返回 {len(results)} 篇论文")
             
+            valid_count = 0
             for result in results:
                 if result.entry_id not in seen_ids:
+                    
+                    # ========== 核心时间拦截器 ==========
+                    now = datetime.now(result.published.tzinfo)
+                    time_diff = now - result.published
+                    
+                    if time_diff.total_seconds() > MAX_AGE_HOURS * 3600:
+                        continue  # 超过 MAX_AGE_HOURS 小时的直接丢弃
+                    # ==================================
+                    
                     seen_ids.add(result.entry_id)
                     abstract_text = result.summary if hasattr(result, 'summary') else ''
                     
@@ -219,16 +237,17 @@ def get_latest_papers():
                     
                     paper['quality_score'] = calculate_paper_quality_score(paper)
                     papers_by_category[category].append(paper)
-                    print(f"  ✓ {result.title[:60]}... (score: {paper['quality_score']:.1f})")
+                    valid_count += 1
+                    print(f"  ✓ {result.title[:50]}... (契合度: {paper['quality_score']:.1f})")
             
             papers_by_category[category].sort(key=lambda x: x['quality_score'], reverse=True)
-            print(f"  Found {len(papers_by_category[category])} papers in {category}")
+            print(f"  在 {category} 中筛选出 {valid_count} 篇最新有效论文")
             
         except Exception as e:
             print(f"  ❌ Error searching {category}: {str(e)}")
             continue
     
-    print(f"\n⚖️ Ensuring category balance...")
+    print(f"\n⚖️ 类别平衡与最终筛选...")
     selected_papers = []
     
     for category in CATEGORIES:
@@ -236,31 +255,28 @@ def get_latest_papers():
         if category_papers:
             num_to_take = min(MIN_PAPERS_PER_CATEGORY, len(category_papers))
             selected_papers.extend(category_papers[:num_to_take])
-            print(f"  Selected {num_to_take} papers from {category}")
     
     remaining_slots = MAX_RESULTS - len(selected_papers)
     if remaining_slots > 0:
-        print(f"\n📊 Filling {remaining_slots} remaining slots with highest quality papers...")
         all_remaining = []
         for category, papers in papers_by_category.items():
             for paper in papers:
                 if paper not in selected_papers:
                     all_remaining.append(paper)
         
+        # 按照你的专属契合度评分择优录取
         all_remaining.sort(key=lambda x: x['quality_score'], reverse=True)
         selected_papers.extend(all_remaining[:remaining_slots])
     
-    print(f"\n🔍 Checking for duplicate/similar papers...")
+    print(f"\n🔍 查重检测中...")
     selected_papers = remove_duplicate_papers(selected_papers)
     selected_papers.sort(key=lambda x: x['published'], reverse=True)
     
-    print(f"\n✅ Total papers collected: {len(selected_papers)}")
-    print(f"📄 Papers to send: {len(selected_papers)}")
+    print(f"\n✅ 收集完毕，共提取: {len(selected_papers)} 篇论文")
     
     category_dist = Counter([p['primary_category'] for p in selected_papers])
-    print(f"\n📊 Category distribution:")
     for cat, count in category_dist.items():
-        print(f"   {cat}: {count} papers")
+        print(f"   {cat}: {count} 篇")
     
     return selected_papers
 
@@ -292,36 +308,36 @@ def analyze_paper_dates(papers):
 
 
 def summarize_paper(paper, language='zh'):
-    print(f"\n🤖 Generating AI summary for:")
+    print(f"\n🤖 正在调用 DeepSeek 提取摘要:")
     print(f"   {paper['title'][:70]}...")
     
     summaries = {}
     
     prompts = {
-        'zh': f"""请用中文总结以下学术论文，包括以下几个方面：
-1. 研究背景和动机（1-2句话）
-2. 主要方法和创新点（2-3句话）
-3. 实验结果和结论（1-2句话）
-4. 潜在应用价值（1句话）
+        'zh': f"""请作为一名电力系统与能源优化领域的资深研究员，用中文总结以下学术论文：
+1. 研究背景和核心动机（1-2句话）
+2. 提出的数学模型、优化算法或主要创新点（2-3句话，如果涉及decision-focused或机器学习，请着重说明）
+3. 实验验证及核心结论（1-2句话）
+4. 对现实电力/能源系统的潜在应用价值（1句话）
 
 论文标题：{paper['title']}
 
 论文摘要：
 {paper['abstract']}
 
-请用简洁专业的语言总结，适合快速阅读理解。""",
-        'en': f"""Please summarize the following academic paper in English, including these aspects:
+请用简洁严谨的学术语言总结，适合快速阅读理解。""",
+        'en': f"""Please act as a senior researcher in Power Systems and Energy Optimization, and summarize the following paper:
 1. Research background and motivation (1-2 sentences)
-2. Main methods and innovations (2-3 sentences)
-3. Experimental results and conclusions (1-2 sentences)
-4. Potential application value (1 sentence)
+2. Mathematical models, optimization algorithms, or main innovations (2-3 sentences, highlight if related to decision-focused or machine learning)
+3. Experimental validation and conclusions (1-2 sentences)
+4. Potential application to real-world power/energy systems (1 sentence)
 
 Paper title: {paper['title']}
 
 Paper abstract:
 {paper['abstract']}
 
-Please use concise professional language suitable for quick reading."""
+Please use concise and rigorous academic language."""
     }
     
     langs_to_generate = ['zh', 'en'] if language == 'both' else [language]
@@ -333,8 +349,6 @@ Please use concise professional language suitable for quick reading."""
         )
         
         for lang in langs_to_generate:
-            print(f"   Generating {'Chinese' if lang == 'zh' else 'English'} summary...")
-            
             response = client.chat.completions.create(
                 model=DEEPSEEK_MODEL,
                 messages=[
@@ -346,7 +360,7 @@ Please use concise professional language suitable for quick reading."""
                 stream=True
             )
             
-            # 【已修改】：安全解析流式响应，避免官方 API 报错
+            # 【修复版】安全解析流式响应，适配官方 deepseek-chat
             summary = ""
             for chunk in response:
                 if getattr(chunk, 'choices', None) and len(chunk.choices) > 0:
@@ -356,7 +370,7 @@ Please use concise professional language suitable for quick reading."""
                         summary += answer_chunk
             
             summaries[lang] = summary.strip()
-            print(f"   ✅ {'Chinese' if lang == 'zh' else 'English'} summary completed")
+            print(f"   ✅ {'中文' if lang == 'zh' else '英文'} 摘要生成完毕")
         
         if language == 'both':
             return summaries
@@ -364,10 +378,10 @@ Please use concise professional language suitable for quick reading."""
             return summaries[language]
     
     except Exception as e:
-        print(f"   ❌ AI summary generation failed: {str(e)}")
+        print(f"   ❌ AI 摘要生成失败: {str(e)}")
         error_msg = {
-            'zh': "摘要生成失败，请直接查看原文。",
-            'en': "Summary generation failed. Please read the original paper."
+            'zh': "摘要生成失败，请直接点击下方链接查看原文 PDF。",
+            'en': "Summary generation failed. Please view the original PDF."
         }
         if language == 'both':
             return error_msg
@@ -397,12 +411,7 @@ def generate_date_notice(date_stats, papers, language='zh'):
     notice_text = ", ".join(notice_parts) if language == 'en' else "、".join(notice_parts)
     notice_message = txt['notice_text'].format(total=total, parts=notice_text)
     
-    if older_count >= total * 0.5:
-        icon, bg_color, border_color, text_color = "⚠️", "#fff3cd", "#ffc107", "#856404"
-    elif older_count > 0:
-        icon, bg_color, border_color, text_color = "ℹ️", "#d1ecf1", "#17a2b8", "#0c5460"
-    else:
-        icon, bg_color, border_color, text_color = "✨", "#d4edda", "#28a745", "#155724"
+    icon, bg_color, border_color, text_color = "✨", "#d4edda", "#28a745", "#155724"
     
     html = f"""
     <div style="background: {bg_color}; border-left: 4px solid {border_color}; padding: 15px 20px; margin-bottom: 25px; border-radius: 5px;">
@@ -426,11 +435,11 @@ def generate_email_content(papers_with_summaries, language='zh'):
     <head>
         <style>
             body {{ font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }}
-            .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
+            .header {{ background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px; }}
             .header h1 {{ margin: 0; font-size: 28px; }}
             .date {{ font-size: 14px; opacity: 0.9; margin-top: 10px; }}
             .paper {{ background: white; padding: 25px; margin-bottom: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: relative; }}
-            .paper-title {{ color: #667eea; font-size: 20px; font-weight: bold; margin-bottom: 10px; line-height: 1.4; }}
+            .paper-title {{ color: #1e3c72; font-size: 20px; font-weight: bold; margin-bottom: 10px; line-height: 1.4; }}
             .quality-badge {{ display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-left: 8px; background: #ffd700; color: #856404; }}
             .meta {{ color: #666; font-size: 14px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }}
             .meta-item {{ margin: 5px 0; }}
@@ -439,18 +448,18 @@ def generate_email_content(papers_with_summaries, language='zh'):
             .date-yesterday {{ background: #d1ecf1; color: #0c5460; }}
             .date-older {{ background: #f8d7da; color: #721c24; }}
             .categories {{ display: inline-block; }}
-            .category-tag {{ background: #e8eaf6; color: #5c6bc0; padding: 3px 10px; border-radius: 12px; font-size: 12px; margin-right: 5px; display: inline-block; }}
-            .summary {{ background: #f8f9ff; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; border-radius: 4px; }}
-            .summary-title {{ font-weight: bold; color: #667eea; margin-bottom: 10px; }}
+            .category-tag {{ background: #e8eaf6; color: #1e3c72; padding: 3px 10px; border-radius: 12px; font-size: 12px; margin-right: 5px; display: inline-block; }}
+            .summary {{ background: #f8f9ff; padding: 15px; border-left: 4px solid #1e3c72; margin: 15px 0; border-radius: 4px; }}
+            .summary-title {{ font-weight: bold; color: #1e3c72; margin-bottom: 10px; }}
             .links {{ margin-top: 15px; }}
-            .link-button {{ display: inline-block; background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-size: 14px; }}
-            .link-button:hover {{ background: #5568d3; }}
+            .link-button {{ display: inline-block; background: #1e3c72; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-size: 14px; }}
+            .link-button:hover {{ background: #2a5298; }}
             .footer {{ text-align: center; color: #999; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; }}
         </style>
     </head>
     <body>
         <div class="header">
-            <h1>📚 {txt['title']}</h1>
+            <h1>⚡ {txt['title']}</h1>
             <div class="date">{today}</div>
         </div>
         {generate_date_notice(date_stats, papers, 'zh' if language == 'zh' else 'en')}
@@ -474,7 +483,7 @@ def generate_email_content(papers_with_summaries, language='zh'):
             date_badge = f'<span class="date-badge date-older">{txt["days_ago_label"].format(days=days_ago)}</span>'
         
         quality_badge = ''
-        if paper.get('quality_score', 0) >= 5.0:
+        if paper.get('quality_score', 0) >= 3.0:  # 调整了展示高分徽章的阈值
             quality_badge = f'<span class="quality-badge">{txt["high_quality"]}</span>'
         
         categories_html = ''.join([
@@ -485,11 +494,11 @@ def generate_email_content(papers_with_summaries, language='zh'):
         if language == 'both' and isinstance(summary, dict):
             summary_html = f"""
                 <div style="margin-bottom: 15px;">
-                    <div style="font-weight: bold; color: #667eea; margin-bottom: 8px;">🇨🇳 中文摘要</div>
+                    <div style="font-weight: bold; color: #1e3c72; margin-bottom: 8px;">🇨🇳 中文摘要</div>
                     <div>{summary.get('zh', '').replace(chr(10), '<br>')}</div>
                 </div>
                 <div>
-                    <div style="font-weight: bold; color: #667eea; margin-bottom: 8px;">🇬🇧 English Summary</div>
+                    <div style="font-weight: bold; color: #1e3c72; margin-bottom: 8px;">🇬🇧 English Summary</div>
                     <div>{summary.get('en', '').replace(chr(10), '<br>')}</div>
                 </div>
             """
@@ -541,7 +550,7 @@ def generate_email_content(papers_with_summaries, language='zh'):
 
 def send_email(subject, html_content):
     """
-    【已修改】：支持自动识别 465 端口并使用 SMTP_SSL 发信（完美兼容 163、QQ邮箱等）
+    【修复版】兼容 163 邮箱的 465 端口直接 SSL 加密连接
     """
     print(f"\n📧 Sending email to {RECEIVER_EMAIL}...")
     
@@ -554,14 +563,11 @@ def send_email(subject, html_content):
         html_part = MIMEText(html_content, 'html', 'utf-8')
         message.attach(html_part)
         
-        # 兼容不同邮箱的加密方式
         if SMTP_PORT == 465:
-            # 端口 465 必须使用直接 SSL 连接
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
                 server.login(SENDER_EMAIL, SENDER_PASSWORD)
                 server.send_message(message)
         else:
-            # 端口 587 等使用普通的 TLS 连接
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
                 server.login(SENDER_EMAIL, SENDER_PASSWORD)
@@ -585,21 +591,21 @@ def main():
     
     if missing_vars:
         print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        print("Please set these environment variables")
+        print("Please set these environment variables in GitHub Secrets")
         return
     
     try:
         papers = get_latest_papers()
         
         if not papers:
-            print("\n⚠️ No papers found, exiting")
+            print("\n⚠️ 过去 48 小时内没有找到相关论文。")
             return
         
         date_stats = analyze_paper_dates(papers)
-        print(f"\n📊 Paper Date Statistics:")
-        print(f"   Today: {date_stats['today']} papers")
-        print(f"   Yesterday: {date_stats['yesterday']} papers")
-        print(f"   Older: {date_stats['older']} papers")
+        print(f"\n📊 论文时效统计:")
+        print(f"   今天发布: {date_stats['today']} 篇")
+        print(f"   昨天发布: {date_stats['yesterday']} 篇")
+        print(f"   更早发布: {date_stats['older']} 篇")
         
         print("\n" + "=" * 60)
         print("🤖 Generating AI Summaries")
@@ -620,7 +626,7 @@ def main():
         html_content = generate_email_content(papers_with_summaries, EMAIL_LANGUAGE)
         
         today = datetime.now().strftime('%Y-%m-%d')
-        subject = f"📚 arXiv Daily Paper Digest - {today}"
+        subject = f"⚡ 电力与优化 arXiv 最新推送 - {today}"
         send_email(subject, html_content)
         
         print("\n" + "=" * 60)
