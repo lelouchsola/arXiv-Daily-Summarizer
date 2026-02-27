@@ -13,7 +13,7 @@ from difflib import SequenceMatcher
 
 # arXiv search configuration
 CATEGORIES = ['math.OC', 'eess.SY']  # 修改为你需要的两个领域
-MAX_RESULTS = 50  # Number of papers to send daily
+MAX_RESULTS = 5  # Number of papers to send daily
 MIN_PAPERS_PER_CATEGORY = 1  # Minimum papers per category to ensure balance
 
 # Language configuration
