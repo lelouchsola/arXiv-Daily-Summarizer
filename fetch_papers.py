@@ -22,8 +22,8 @@ EMAIL_LANGUAGE = os.environ.get('EMAIL_LANGUAGE', 'zh')  # Default to Chinese
 
 # DeepSeek API configuration
 DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
-DEEPSEEK_BASE_URL = 'https://api.deepseek.com'
-DEEPSEEK_MODEL = 'deepseek-chat'
+DEEPSEEK_BASE_URL = 'https://api-inference.modelscope.cn/v1'
+DEEPSEEK_MODEL = 'deepseek-ai/DeepSeek-V3.2-Exp' 
 
 # Email configuration
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL')
