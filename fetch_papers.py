@@ -13,7 +13,7 @@ from difflib import SequenceMatcher
 
 # arXiv search configuration
 CATEGORIES = ['math.OC', 'eess.SY']  # 你的专属研究领域
-MAX_RESULTS = 5  # 每天最多推送的论文数量（过滤后都是精选，可适当调低）
+MAX_RESULTS = 20  # 每天最多推送的论文数量（过滤后都是精选，可适当调低）
 MIN_PAPERS_PER_CATEGORY = 1  
 MAX_AGE_HOURS = 48  # 只抓取过去 48 小时内的论文（建议 48 小时以覆盖 arXiv 周末不更新的情况）
 
