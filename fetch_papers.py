@@ -15,17 +15,16 @@ from difflib import SequenceMatcher
 CATEGORIES = ['math.OC', 'eess.SY']  # 你的专属研究领域
 MAX_RESULTS = 10  # 每天最多推送的论文数量（过滤后都是精选，可适当调低）
 MIN_PAPERS_PER_CATEGORY = 1  
-MAX_AGE_HOURS = 72  # 只抓取过去 48 小时内的论文（建议 48 小时以覆盖 arXiv 周末不更新的情况）
 
 # Language configuration
 EMAIL_LANGUAGE = os.environ.get('EMAIL_LANGUAGE', 'zh')  # 默认中文摘要
 
-# DeepSeek API configuration (已修改为 DeepSeek 官方配置)
+# DeepSeek API configuration
 DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
 DEEPSEEK_BASE_URL = 'https://api.deepseek.com'
 DEEPSEEK_MODEL = 'deepseek-chat' 
 
-# Email configuration (已适配 163 邮箱默认配置)
+# Email configuration (163 邮箱配置)
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL')
 SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD')  # 注意：这里必须填 163 邮箱的授权码
 RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL')
@@ -109,7 +108,7 @@ def calculate_paper_quality_score(paper):
     elif num_authors > 8:
         score += 0.5
     
-    # 维度 3: 核心关键词 (已为你替换为电力系统与学习优化方向)
+    # 维度 3: 核心关键词 (电力系统与学习优化方向)
     title = paper.get('title', '').lower()
     abstract = paper.get('abstract', '').lower()
     
@@ -191,7 +190,6 @@ def remove_duplicate_papers(papers):
 def get_latest_papers():
     print(f"🔍 Searching for latest papers on arXiv...")
     print(f"📚 Categories: {', '.join(CATEGORIES)}")
-    print(f"⏳ Time filter: Last {MAX_AGE_HOURS} hours")
     
     client = arxiv.Client()
     papers_by_category = defaultdict(list)
@@ -200,9 +198,10 @@ def get_latest_papers():
     for category in CATEGORIES:
         print(f"\n🔎 Searching category: {category}")
         try:
+            # 扩大初筛池容量，保证周末积压的论文能够被抓取到
             search = arxiv.Search(
                 query=f'cat:{category}',
-                max_results=MAX_RESULTS * 3,  # 多抓取一些用于时间过滤和打分筛选
+                max_results=MAX_RESULTS * 10,  
                 sort_by=arxiv.SortCriterion.SubmittedDate,
                 sort_order=arxiv.SortOrder.Descending
             )
@@ -214,13 +213,19 @@ def get_latest_papers():
             for result in results:
                 if result.entry_id not in seen_ids:
                     
-                    # ========== 核心时间拦截器 ==========
+                    # ========== 智能时间拦截器 (解决 arXiv 周末停更问题) ==========
                     now = datetime.now(result.published.tzinfo)
+                    current_weekday = now.weekday()
+                    
+                    # 周一(0)或周二(1)运行：往前看5天，捞回周五到周日的提交
+                    # 其他时间运行：往前看3天即可
+                    lookback_days = 5 if current_weekday in [0, 1] else 3
+                    
                     time_diff = now - result.published
                     
-                    if time_diff.total_seconds() > MAX_AGE_HOURS * 3600:
-                        continue  # 超过 MAX_AGE_HOURS 小时的直接丢弃
-                    # ==================================
+                    if time_diff.days > lookback_days:
+                        continue  # 丢弃提交时间过早的旧论文
+                    # ==========================================================
                     
                     seen_ids.add(result.entry_id)
                     abstract_text = result.summary if hasattr(result, 'summary') else ''
@@ -265,7 +270,7 @@ def get_latest_papers():
                 if paper not in selected_papers:
                     all_remaining.append(paper)
         
-        # 按照你的专属契合度评分择优录取
+        # 按照专属契合度评分择优录取
         all_remaining.sort(key=lambda x: x['quality_score'], reverse=True)
         selected_papers.extend(all_remaining[:remaining_slots])
     
@@ -362,7 +367,7 @@ Please use concise and rigorous academic language."""
                 stream=True
             )
             
-            # 【修复版】安全解析流式响应，适配官方 deepseek-chat
+            # 安全解析流式响应，适配官方 deepseek-chat
             summary = ""
             for chunk in response:
                 if getattr(chunk, 'choices', None) and len(chunk.choices) > 0:
@@ -552,7 +557,7 @@ def generate_email_content(papers_with_summaries, language='zh'):
 
 def send_email(subject, html_content):
     """
-    【修复版】兼容 163 邮箱的 465 端口直接 SSL 加密连接
+    兼容 163 邮箱的 465 端口直接 SSL 加密连接
     """
     print(f"\n📧 Sending email to {RECEIVER_EMAIL}...")
     
@@ -593,14 +598,14 @@ def main():
     
     if missing_vars:
         print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        print("Please set these environment variables in GitHub Secrets")
+        print("Please set these environment variables in your system or IDE")
         return
     
     try:
         papers = get_latest_papers()
         
         if not papers:
-            print("\n⚠️ 过去 48 小时内没有找到相关论文。")
+            print("\n⚠️ 过去设定的时间窗口内没有找到相关论文。")
             return
         
         date_stats = analyze_paper_dates(papers)
