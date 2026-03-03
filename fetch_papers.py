@@ -390,7 +390,8 @@ def generate_email_content(papers_with_summaries, language='zh'):
         
         quality_badge = f'<span class="quality-badge">{txt["high_quality"]}</span>' if paper.get('quality_score', 0) >= 3.0 else ''
         categories_html = ''.join([f'<span class="category-tag">{cat}</span>' for cat in paper['categories'][:3]])
-        
+
+
         html += f"""
         <div class="paper">
             <div class="paper-title">{i}. {paper['title']}{date_badge}{quality_badge}</div>
@@ -398,6 +399,7 @@ def generate_email_content(papers_with_summaries, language='zh'):
                 <div style="margin: 5px 0;"><strong>👥 {txt['authors']}:</strong> {paper['authors'][:200]}</div>
                 <div style="margin: 5px 0;"><strong>📅 {txt['published']}:</strong> {paper['published'].strftime('%Y-%m-%d %H:%M')}</div>
                 <div style="margin: 5px 0;"><strong>🏷️ {txt['categories']}:</strong> {categories_html}</div>
+                <div style="margin: 5px 0;"><strong>📊 {txt['quality_score']}:</strong> {paper.get('quality_score', 0):.1f}</div>
             </div>
             <div class="summary">
                 <div class="summary-title">🤖 {txt['ai_summary']}</div>
