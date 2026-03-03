@@ -41,7 +41,7 @@ SIMILARITY_THRESHOLD = 0.85
 # Language text templates
 TEXT_TEMPLATES = {
     'zh': {
-        'title': 'arXiv 每日论文精选推送 - 大湾区大学 Smart Energy 课题组',
+        'title': 'arXiv 每日论文精选推送 - 大湾区大学 IDEA (Intelligent Decision & Energy Analytics) Lab',
         'date_notice': '论文时效说明',
         'today': '今天',
         'yesterday': '昨天',
