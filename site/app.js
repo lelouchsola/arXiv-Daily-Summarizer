@@ -124,10 +124,10 @@ function renderPaperList(container, papers, emptyMessage) {
     fragment.querySelector(".paper-card__title").textContent = paper.title;
     fragment.querySelector(".paper-card__meta").textContent =
       `${paper.authors.slice(0, 5).join(", ") || "Unknown authors"} · ${paper.published_date_local} ${paper.published_time_local}`;
-    fragment.querySelector(".score-badge").textContent = `推荐分 ${paper.final_score.toFixed(1)}`;
+    fragment.querySelector(".score-badge").textContent = `推荐分 ${paper.final_score.toFixed(1)} / 10`;
     fragment.querySelector(".label-badge").textContent = paper.relevance_label;
     fragment.querySelector(".paper-card__reason").textContent = paper.score_reason;
-    fragment.querySelector(".paper-card__summary").textContent = paper.ai_summary;
+    fragment.querySelector(".paper-card__summary").innerHTML = formatStructuredText(paper.ai_summary || "");
     fragment.querySelector(".paper-card__value").textContent = paper.application_value;
 
     const keywordContainer = fragment.querySelector(".paper-card__keywords");
@@ -214,6 +214,21 @@ function buildAgeLabel(paper) {
   if (diffDays === 0) return "今日发布";
   if (diffDays === 1) return "昨天发布";
   return `${diffDays} 天前发布`;
+}
+
+function formatStructuredText(text) {
+  const escaped = escapeHtml(text || "");
+  const withBold = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  return withBold.replace(/\n/g, "<br>");
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function formatDateTime(isoString, timezone) {
