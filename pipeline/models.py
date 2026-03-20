@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -27,6 +27,7 @@ class PaperRecord:
     ai_summary: str = ""
     application_value: str = ""
     relevance_label: str = "Pending"
+    matched_keywords: list[str] = field(default_factory=list)
 
     def published_at_local(self, timezone_name: str) -> datetime:
         return self.published_at.astimezone(ZoneInfo(timezone_name))
@@ -56,4 +57,5 @@ class PaperRecord:
             "ai_summary": self.ai_summary,
             "application_value": self.application_value,
             "relevance_label": self.relevance_label,
+            "matched_keywords": self.matched_keywords,
         }

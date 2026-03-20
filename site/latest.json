@@ -1,16 +1,31 @@
 ﻿{
   "meta": {
-    "title": "Daily Paper Briefing",
-    "subtitle": "Awaiting the first scheduled build.",
+    "title": "每日论文精选推送 - 陈戈 from 大湾区大学 IDEA (Intelligent Decision & Energy Analytics) Lab",
+    "subtitle": "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。",
     "target_date": "",
     "generated_at": "",
     "timezone": "Asia/Shanghai",
+    "lookback_days": 3,
     "paper_count": 0,
     "source_count": 0,
     "strong_match_count": 0,
     "source_counts": {},
     "journal_counts": {},
     "source_errors": []
+  },
+  "sections": {
+    "discovery": {
+      "title": "跨来源发现榜",
+      "description": "汇总 arXiv、Nature、Joule 等来源，帮助你发现近三天最值得先扫一眼的新方向。",
+      "count": 0,
+      "papers": []
+    },
+    "core_ieee": {
+      "title": "核心电力期刊榜",
+      "description": "TSG、TPWRS、TSTE、TTE 单独成池排序，避免核心电力期刊因领域天然契合而长期挤占主榜。",
+      "count": 0,
+      "papers": []
+    }
   },
   "papers": []
 }

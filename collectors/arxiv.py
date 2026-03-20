@@ -1,6 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
 import arxiv
@@ -13,8 +13,10 @@ def collect_arxiv_papers(
     target_date: date,
     timezone_name: str,
     max_results_per_category: int,
+    lookback_days: int,
 ) -> list[PaperRecord]:
     timezone = ZoneInfo(timezone_name)
+    min_date = target_date - timedelta(days=max(lookback_days - 1, 0))
     client = arxiv.Client()
     papers: list[PaperRecord] = []
     seen_ids: set[str] = set()
@@ -29,9 +31,10 @@ def collect_arxiv_papers(
 
         for result in client.results(search):
             published_local = result.published.astimezone(timezone)
-            if published_local.date() < target_date:
+            published_date = published_local.date()
+            if published_date < min_date:
                 break
-            if published_local.date() != target_date:
+            if published_date > target_date:
                 continue
             if result.entry_id in seen_ids:
                 continue

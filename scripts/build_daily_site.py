@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +35,7 @@ def main() -> int:
                 target_date=target_date,
                 timezone_name=settings.timezone_name,
                 max_results_per_category=settings.max_results_per_arxiv_category,
+                lookback_days=settings.lookback_days,
             )
             print(f"Collected {len(arxiv_records)} arXiv papers.")
             records.extend(arxiv_records)
@@ -51,6 +52,8 @@ def main() -> int:
             journal_records = collect_crossref_journal_papers(
                 config=source_config,
                 target_date=target_date,
+                timezone_name=settings.timezone_name,
+                lookback_days=settings.lookback_days,
                 contact_email=settings.crossref_mailto,
             )
             print(f"Collected {len(journal_records)} records from {source_config.journal_title}.")

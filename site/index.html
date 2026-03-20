@@ -1,83 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Daily Paper Briefing</title>
+    <title>每日论文精选推送</title>
     <meta
       name="description"
-      content="A daily paper digest for optimization, power systems, and sustainable energy."
+      content="大湾区大学 IDEA Lab 每日论文精选网页，聚焦近三天 arXiv 与重点能源电力期刊的新论文。"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
-        <div class="hero__glow hero__glow--left"></div>
-        <div class="hero__glow hero__glow--right"></div>
-        <p class="eyebrow">Daily Research Briefing</p>
-        <h1 id="site-title">Daily Paper Briefing</h1>
-        <p id="site-subtitle" class="hero__subtitle">
-          A once-a-day research brief for optimization, power systems, and sustainable energy.
-        </p>
-        <div class="hero__meta">
-          <span id="target-date" class="meta-pill">Loading date...</span>
-          <span id="updated-at" class="meta-pill meta-pill--soft">Preparing latest build...</span>
+        <div class="hero__mesh hero__mesh--amber"></div>
+        <div class="hero__mesh hero__mesh--teal"></div>
+        <div class="hero__content">
+          <p class="eyebrow">IDEA Lab Daily Digest</p>
+          <h1 id="site-title">每日论文精选推送 - 陈戈 from 大湾区大学 IDEA (Intelligent Decision &amp; Energy Analytics) Lab</h1>
+          <p id="site-subtitle" class="hero__subtitle">聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。</p>
+          <div class="hero__meta">
+            <span id="target-date" class="meta-pill">加载日期中...</span>
+            <span id="updated-at" class="meta-pill meta-pill--soft">等待最新构建...</span>
+            <span id="window-pill" class="meta-pill meta-pill--soft">近 3 天窗口</span>
+          </div>
         </div>
       </header>
 
       <main class="layout">
-        <section class="overview">
-          <div class="stats-grid" id="stats-grid">
-            <article class="stat-card">
-              <span class="stat-card__label">Today's Picks</span>
-              <strong class="stat-card__value">--</strong>
-            </article>
-            <article class="stat-card">
-              <span class="stat-card__label">Sources</span>
-              <strong class="stat-card__value">--</strong>
-            </article>
-            <article class="stat-card">
-              <span class="stat-card__label">Strong Matches</span>
-              <strong class="stat-card__value">--</strong>
-            </article>
-          </div>
+        <aside class="overview">
+          <div class="stats-grid" id="stats-grid"></div>
 
           <section class="control-panel">
             <div class="control-panel__group">
-              <span class="control-label">Source</span>
+              <span class="control-label">来源筛选</span>
               <div id="source-filters" class="chip-row"></div>
             </div>
             <div class="control-panel__group">
-              <span class="control-label">Relevance</span>
+              <span class="control-label">相关性筛选</span>
               <div id="label-filters" class="chip-row"></div>
             </div>
             <label class="sort-control" for="sort-select">
-              <span class="control-label">Sort</span>
+              <span class="control-label">排序方式</span>
               <select id="sort-select">
-                <option value="score">Highest score</option>
-                <option value="latest">Newest first</option>
-                <option value="journal">Journal A-Z</option>
+                <option value="score">综合评分从高到低</option>
+                <option value="latest">发布时间从近到远</option>
+                <option value="journal">期刊名称 A-Z</option>
               </select>
             </label>
           </section>
-        </section>
+        </aside>
 
         <section class="content-section">
           <div class="section-header">
             <div>
-              <p class="section-header__eyebrow">Curated Feed</p>
-              <h2>Today's ranked reading list</h2>
+              <p class="section-header__eyebrow">Curated Reading Queue</p>
+              <h2>近三天重点论文精选</h2>
             </div>
-            <p id="result-count" class="section-header__count">Loading papers...</p>
+            <p id="result-count" class="section-header__count">加载中...</p>
           </div>
           <div id="error-banner" class="error-banner" hidden></div>
-          <div id="paper-list" class="paper-grid"></div>
+
+          <section class="digest-section digest-section--primary">
+            <div class="digest-section__header">
+              <div>
+                <h3 id="discovery-title">跨来源发现榜</h3>
+                <p id="discovery-description" class="digest-section__description"></p>
+              </div>
+              <span id="discovery-count" class="digest-section__count">0 篇</span>
+            </div>
+            <div id="discovery-list" class="paper-grid"></div>
+          </section>
+
+          <section class="digest-section digest-section--secondary">
+            <div class="digest-section__header">
+              <div>
+                <h3 id="core-title">核心电力期刊榜</h3>
+                <p id="core-description" class="digest-section__description"></p>
+              </div>
+              <span id="core-count" class="digest-section__count">0 篇</span>
+            </div>
+            <div id="core-list" class="paper-grid"></div>
+          </section>
+
           <template id="paper-card-template">
             <article class="paper-card">
               <div class="paper-card__topline">
                 <span class="paper-card__source"></span>
                 <span class="paper-card__journal"></span>
+                <span class="paper-card__age"></span>
               </div>
               <h3 class="paper-card__title"></h3>
               <div class="paper-card__meta"></div>
@@ -85,12 +96,17 @@
                 <span class="score-badge"></span>
                 <span class="label-badge"></span>
               </div>
+              <p class="paper-card__reason"></p>
+              <div class="paper-card__keywords-block">
+                <span class="keywords-label">关键词</span>
+                <div class="paper-card__keywords"></div>
+              </div>
               <p class="paper-card__summary"></p>
               <p class="paper-card__value"></p>
               <div class="paper-card__footer">
                 <div class="paper-card__categories"></div>
                 <div class="paper-card__links">
-                  <a class="text-link primary-link" target="_blank" rel="noreferrer">Open paper</a>
+                  <a class="text-link primary-link" target="_blank" rel="noreferrer">查看原文</a>
                   <a class="text-link secondary-link" target="_blank" rel="noreferrer" hidden>PDF</a>
                 </div>
               </div>

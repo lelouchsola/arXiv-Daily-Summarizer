@@ -1,8 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from dateutil import parser as date_parser
@@ -17,6 +18,8 @@ USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Sum
 def collect_crossref_journal_papers(
     config: JournalSourceConfig,
     target_date: date,
+    timezone_name: str,
+    lookback_days: int,
     contact_email: str | None = None,
     timeout_seconds: int = 30,
 ) -> list[PaperRecord]:
@@ -26,16 +29,19 @@ def collect_crossref_journal_papers(
         headers["User-Agent"] = f"{USER_AGENT} mailto:{contact_email}"
     session.headers.update(headers)
 
+    timezone_local = ZoneInfo(timezone_name)
+    min_date = target_date - timedelta(days=max(lookback_days - 1, 0))
     records: list[PaperRecord] = []
     seen_ids: set[str] = set()
 
     for issn in config.issns:
-        items = _fetch_crossref_items(session, issn, target_date, timeout_seconds)
+        items = _fetch_crossref_items(session, issn, min_date, target_date, timeout_seconds)
         for item in items:
             record = _item_to_record(item, config)
             if not record or record.id in seen_ids:
                 continue
-            if record.published_at.date() != target_date:
+            published_local_date = record.published_at.astimezone(timezone_local).date()
+            if published_local_date < min_date or published_local_date > target_date:
                 continue
             seen_ids.add(record.id)
             records.append(record)
@@ -46,12 +52,13 @@ def collect_crossref_journal_papers(
 def _fetch_crossref_items(
     session: requests.Session,
     issn: str,
+    min_date: date,
     target_date: date,
     timeout_seconds: int,
 ) -> list[dict]:
     filters_to_try = [
-        f"from-online-pub-date:{target_date.isoformat()},until-online-pub-date:{target_date.isoformat()}",
-        f"from-pub-date:{target_date.isoformat()},until-pub-date:{target_date.isoformat()}",
+        f"from-online-pub-date:{min_date.isoformat()},until-online-pub-date:{target_date.isoformat()}",
+        f"from-pub-date:{min_date.isoformat()},until-pub-date:{target_date.isoformat()}",
     ]
     select_fields = ",".join(
         [
@@ -76,7 +83,7 @@ def _fetch_crossref_items(
             CROSSREF_API_URL.format(issn=issn),
             params={
                 "filter": filter_clause,
-                "rows": 50,
+                "rows": 100,
                 "select": select_fields,
             },
             timeout=timeout_seconds,
