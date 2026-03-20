@@ -66,12 +66,18 @@ def main() -> int:
     score_records(records, settings)
     records = dedupe_records(records)
     records.sort(key=lambda record: (record.final_score, record.published_at.timestamp()), reverse=True)
-    selected_records = records[: settings.max_results]
+
+    core_ieee_journals = {
+        config.journal_title for config in settings.source_configs if config.group_key == "core_ieee"
+    }
+    discovery_records = [record for record in records if record.journal not in core_ieee_journals]
+    core_ieee_records = [record for record in records if record.journal in core_ieee_journals]
+
+    selected_records = (
+        discovery_records[: settings.max_results_per_section]
+        + core_ieee_records[: settings.max_results_per_section]
+    )[: settings.max_results]
     enrich_records_with_summaries(selected_records, settings)
-    selected_records.sort(
-        key=lambda record: (record.final_score, record.published_at.timestamp()),
-        reverse=True,
-    )
 
     site_dir = Path(__file__).resolve().parents[1] / "site"
     write_site_payload(

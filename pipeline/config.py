@@ -16,9 +16,10 @@ class JournalSourceConfig:
 @dataclass(frozen=True)
 class Settings:
     timezone_name: str = "Asia/Shanghai"
-    site_title: str = "每日论文精选推送 - 陈戈 from 大湾区大学 IDEA (Intelligent Decision & Energy Analytics) Lab"
+    site_title: str = "每日论文精选推送"
     site_subtitle: str = "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。"
     max_results: int = 20
+    max_results_per_section: int = 10
     arxiv_categories: tuple[str, ...] = ("math.OC", "eess.SY")
     max_results_per_arxiv_category: int = 200
     summary_count: int = 20
@@ -33,15 +34,13 @@ class Settings:
 
 def load_settings() -> Settings:
     timezone_name = os.environ.get("TARGET_TIMEZONE", "Asia/Shanghai")
-    site_title = os.environ.get(
-        "SITE_TITLE",
-        "每日论文精选推送 - 陈戈 from 大湾区大学 IDEA (Intelligent Decision & Energy Analytics) Lab",
-    )
+    site_title = os.environ.get("SITE_TITLE", "每日论文精选推送")
     site_subtitle = os.environ.get(
         "SITE_SUBTITLE",
         "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。",
     )
     max_results = int(os.environ.get("MAX_RESULTS", "20"))
+    max_results_per_section = int(os.environ.get("MAX_RESULTS_PER_SECTION", "10"))
     summary_count = int(os.environ.get("SUMMARY_COUNT", str(max_results)))
     lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
     arxiv_categories = tuple(
@@ -112,6 +111,7 @@ def load_settings() -> Settings:
         site_title=site_title,
         site_subtitle=site_subtitle,
         max_results=max_results,
+        max_results_per_section=max_results_per_section,
         arxiv_categories=arxiv_categories,
         max_results_per_arxiv_category=max_results * 10,
         summary_count=summary_count,
