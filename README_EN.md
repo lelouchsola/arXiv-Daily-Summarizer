@@ -1,249 +1,108 @@
-# arXiv Daily Paper ​​Summarizer
+# Daily Paper Briefing
 
-🤖 Automatically fetch the latest papers from arXiv in specific fields, generate Chinese/English/Bilingual summaries using DeepSeek AI, and deliver them to your inbox daily.
+This repository builds a daily research briefing website for power systems, optimization, and sustainable energy.
 
-[中文文档](./README_CN.md) | English
+Instead of sending an email, the pipeline now:
 
-## ✨ Features
+1. Runs once per day with GitHub Actions.
+2. Collects papers released on the same day from arXiv and selected journals.
+3. Scores and ranks the papers.
+4. Generates short Chinese summaries.
+5. Publishes the result to GitHub Pages.
 
-- 📚 **Smart Paper Selection**: Fetches latest papers from cs.AI, cs.CV, and cs.CL categories
-- 🎯 **Category Balance**: Ensures representation from each research area
-- 🏆 **Quality Filtering**: Scores papers based on multiple quality indicators
-- 🔄 **Intelligent Deduplication**: Detects and removes similar papers automatically
-- 🤖 **AI Summaries**: Generates high-quality Chinese summaries using DeepSeek V3.2
-- 📧 **Email Delivery**: Beautiful HTML email format with date notices and quality badges
-- ⏰ **Automated Scheduling**: Runs automatically via GitHub Actions
-- 🆓 **Completely Free**: All services within free tier limits
+## Current status
 
-## 🚀 Quick Start
+The project now ships a GitHub Pages workflow and a static front end in [site/index.html](/C:/codex_workspace/dailyPaper/site/index.html).
 
-### 1. Fork or Clone This Repository
+Implemented pieces:
+
+1. Daily static site build pipeline.
+2. arXiv collector.
+3. Crossref-based journal metadata collector for:
+   - Nature Energy
+   - Nature Communications
+   - Joule
+   - IEEE Transactions on Smart Grid
+   - IEEE Transactions on Power Systems
+   - IEEE Transactions on Sustainable Energy
+4. Rule-based scoring, batch deduplication, and optional DeepSeek summaries.
+
+Notes:
+
+1. Journal collection is intentionally non-blocking. If one source fails, the site still publishes.
+2. The site only shows the current day's build. No cross-day history is stored.
+3. DeepSeek is optional. Without `DEEPSEEK_API_KEY`, the site still builds with fallback summaries.
+
+## Repository layout
+
+```text
+.github/workflows/build_daily_site.yml
+collectors/
+pipeline/
+scripts/build_daily_site.py
+site/
+IMPLEMENTATION_DESIGN.md
+```
+
+## Required secrets and settings
+
+Open your repository settings and configure:
+
+### GitHub Actions secrets
+
+1. `DEEPSEEK_API_KEY`
+   Optional. Enables AI summaries and model-assisted relevance scoring.
+2. `CROSSREF_MAILTO`
+   Optional but recommended. A contact email sent with Crossref requests.
+
+### Repository Pages settings
+
+1. Enable GitHub Pages for the repository.
+2. Set the source to GitHub Actions.
+
+The workflow uses the default `GITHUB_TOKEN`, so a personal access token is not required for normal Pages deployment.
+
+## Environment variables
+
+See [.env.example](/C:/codex_workspace/dailyPaper/.env.example).
+
+Main variables:
+
+1. `TARGET_TIMEZONE`
+2. `SITE_TITLE`
+3. `SITE_SUBTITLE`
+4. `MAX_RESULTS`
+5. `SUMMARY_COUNT`
+6. `ARXIV_CATEGORIES`
+7. `ENABLED_SOURCES`
+
+## Local usage
 
 ```bash
-git clone https://github.com/RunRiotComeOn/arXiv-Daily-Summarizer.git
-cd arxiv-daily-summarizer
-```
-
-### 2. Configure GitHub Secrets
-
-Navigate to your GitHub repository: **Settings → Secrets and variables → Actions → New repository secret**
-
-Add the following secrets:
-
-| Secret Name | Description | Example |
-|-------------|-------------|---------|
-| `DEEPSEEK_API_KEY` | DeepSeek API key | `ms-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
-| `SENDER_EMAIL` | Sender email address | `your-email@gmail.com` |
-| `SENDER_PASSWORD` | Email app-specific password | `abcd efgh ijkl mnop` |
-| `RECEIVER_EMAIL` | Recipient email address | `receiver@example.com` |
-| `SMTP_SERVER` | SMTP server address (optional) | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP port (optional) | `587` |
-
-#### 📮 Email Configuration Guide
-
-**Gmail Users:**
-1. Go to [Google Account Security Settings](https://myaccount.google.com/security)
-2. Enable "2-Step Verification"
-3. Generate an "App Password"
-4. Select "Mail" and "Other device"
-5. Use the generated 16-character password as `SENDER_PASSWORD`
-
-**QQ Mail Users:**
-1. Log in to QQ Mail → Settings → Account
-2. Find "POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV Service"
-3. Enable "IMAP/SMTP Service"
-4. Get authorization code as `SENDER_PASSWORD`
-5. Set `SMTP_SERVER` to `smtp.qq.com`
-
-**163 Mail Users:**
-1. Log in to 163 Mail → Settings → POP3/SMTP/IMAP
-2. Enable "IMAP/SMTP Service"
-3. Get authorization code
-4. Set `SMTP_SERVER` to `smtp.163.com`
-
-### 3. Enable GitHub Actions
-
-1. Go to the repository's **Actions** tab
-2. Click "I understand my workflows, go ahead and enable them"
-3. For first-time testing, click "Run workflow" to trigger manually
-
-### 4. Wait for Daily Digest
-
-The system runs automatically at 8:00 AM Beijing Time daily (configurable in `.github/workflows/daily_arxiv.yml`).
-
-## 🛠️ Customization
-
-### Modify Research Areas
-
-Edit the `CATEGORIES` variable in `fetch_papers.py`:
-
-```python
-CATEGORIES = ['cs.AI', 'cs.CV', 'cs.CL']  # Add other categories as needed
-```
-
-Common arXiv categories:
-- `cs.AI` - Artificial Intelligence
-- `cs.CV` - Computer Vision
-- `cs.CL` - Computation and Language (NLP)
-- `cs.LG` - Machine Learning
-- `cs.RO` - Robotics
-- `cs.NE` - Neural and Evolutionary Computing
-
-### Modify Number of Papers
-
-Edit the `MAX_RESULTS` variable in `fetch_papers.py`:
-
-```python
-MAX_RESULTS = 5  # Number of papers to send daily
-```
-
-### Modify Category Balance
-
-Edit the `MIN_PAPERS_PER_CATEGORY` variable:
-
-```python
-MIN_PAPERS_PER_CATEGORY = 1  # Minimum papers per category
-```
-
-### Modify Delivery Time
-
-Edit the cron expression in `.github/workflows/daily_arxiv.yml`:
-
-```yaml
-schedule:
-  - cron: '0 0 * * *'  # UTC time, add 8 hours for Beijing Time
-```
-
-Time reference:
-- `'0 0 * * *'` - 08:00 Beijing Time
-- `'0 1 * * *'` - 09:00 Beijing Time
-- `'0 12 * * *'` - 20:00 Beijing Time
-
-### Adjust Quality Filtering
-
-Modify thresholds in `fetch_papers.py`:
-
-```python
-MIN_ABSTRACT_LENGTH = 100  # Minimum abstract length
-SIMILARITY_THRESHOLD = 0.85  # Duplicate detection threshold (0-1)
-```
-
-## 📁 Project Structure
-
-```
-arxiv-daily-summarizer/
-├── .github/
-│   └── workflows/
-│       └── daily_arxiv.yml    # GitHub Actions workflow config
-├── fetch_papers.py            # Main script with quality filtering
-├── requirements.txt           # Python dependencies
-├── .env.example              # Environment variable template
-├── README.md                 # English documentation
-└── README_CN.md              # Chinese documentation
-```
-
-## 🔧 Local Testing
-
-```bash
-# 1. Install dependencies
 pip install -r requirements.txt
-
-# 2. Set environment variables (Windows PowerShell)
-$env:DEEPSEEK_API_KEY="your-api-key"
-$env:SENDER_EMAIL="your-email@gmail.com"
-$env:SENDER_PASSWORD="your-password"
-$env:RECEIVER_EMAIL="receiver@example.com"
-
-# Or use .env file (Unix/Linux/Mac)
-cp .env.example .env
-# Edit .env with your credentials
-export $(cat .env | xargs)
-
-# 3. Run the script
-python fetch_papers.py
+python -m scripts.build_daily_site
 ```
 
-## 📊 Quality Scoring System
+The build writes:
 
-Papers are scored based on multiple factors:
+1. [site/latest.json](/C:/codex_workspace/dailyPaper/site/latest.json)
+2. [site/index.html](/C:/codex_workspace/dailyPaper/site/index.html)
 
-1. **Abstract Length**: Longer abstracts indicate more detailed work (+0-2 points)
-2. **Author Count**: Collaborative work gets bonus (+0-1 points)
-3. **Title Keywords**: Important terms like "novel", "efficient", "transformer" (+0.5 points each)
-4. **Recency**: Newer papers receive higher scores (+0.5-3 points)
-5. **Title Quality**: Appropriate length and structure
+Open the generated site locally with any static server if you want to preview the full experience.
 
-High-quality papers (score ≥ 5.0) receive a ⭐ badge in the email.
+## Scheduled publishing
 
-## 🔍 Smart Deduplication
+The workflow in [.github/workflows/build_daily_site.yml](/C:/codex_workspace/dailyPaper/.github/workflows/build_daily_site.yml) runs once per day and deploys the `site/` directory to GitHub Pages.
 
-The system detects similar papers by:
-- Calculating title similarity using sequence matching
-- Removing duplicates with >85% similarity
-- Keeping the higher-quality version when duplicates are found
+Default schedule:
 
-## ⚖️ Category Balance Algorithm
+1. `30 0 * * *` UTC
+2. Equivalent to `08:30` in `Asia/Shanghai`
 
-1. **Guaranteed Minimum**: Each category gets at least 1 paper
-2. **Quality Filling**: Remaining slots filled with highest-scoring papers across all categories
-3. **Final Sort**: Papers sorted by publication date (newest first)
+## Next steps
 
-## 📊 Usage Limits
+The repository now has the first full GitHub Pages version in place. The next likely improvements are:
 
-- **GitHub Actions**: 2000 minutes/month free (this project uses ~2-3 minutes/day)
-- **DeepSeek API**: Free tier provided by ModelScope
-- **Email**: Depends on your email provider's limits
-
-## ❓ FAQ
-
-**Q: Why didn't I receive the email?**
-- Check GitHub Actions logs for errors
-- Verify all Secrets are configured correctly
-- Check your spam folder
-- Confirm SMTP settings for your email provider
-
-**Q: How do I modify the email design?**
-- Edit the `generate_email_content()` function in `fetch_papers.py`
-- Modify HTML and CSS code as needed
-
-**Q: Can I send to WeChat or Telegram instead?**
-- Yes! Replace the `send_email()` function with the appropriate API calls
-
-**Q: Why are some papers several days old?**
-- arXiv releases papers on a schedule, not continuously
-- The system shows a date notice when papers are older
-- Adjust `MIN_PAPERS_PER_CATEGORY` if you want stricter recency
-
-**Q: How can I increase paper quality?**
-- Increase `MIN_ABSTRACT_LENGTH` threshold
-- Add more quality keywords in `calculate_paper_quality_score()`
-- Increase the quality score threshold for filtering
-
-## 📝 License
-
-MIT License
-
-## 🙏 Acknowledgments
-
-- [arXiv](https://arxiv.org/) - Open access to scholarly articles
-- [DeepSeek](https://www.deepseek.com/) - Powerful AI models
-- [GitHub Actions](https://github.com/features/actions) - Free automation service
-
----
-
-⭐ If this project helps you, please consider giving it a star!
-
-## 🔄 Updates & Changelog
-
-### v2.0 - Enhanced Quality & Intelligence
-- ✅ Added quality scoring system
-- ✅ Implemented intelligent deduplication
-- ✅ Ensured category balance
-- ✅ Added high-quality paper badges
-- ✅ Improved date notices
-- ✅ Full English documentation
-
-### v1.0 - Initial Release
-- Basic paper fetching and summarization
-- Email delivery functionality
-- GitHub Actions automation
+1. Improve journal-specific abstract retrieval for IEEE and Joule.
+2. Tune the ranking weights.
+3. Add richer source-specific tags and filters in the front end.

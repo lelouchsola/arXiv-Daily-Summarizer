@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Paper Briefing</title>
+    <meta
+      name="description"
+      content="A daily paper digest for optimization, power systems, and sustainable energy."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero__glow hero__glow--left"></div>
+        <div class="hero__glow hero__glow--right"></div>
+        <p class="eyebrow">Daily Research Briefing</p>
+        <h1 id="site-title">Daily Paper Briefing</h1>
+        <p id="site-subtitle" class="hero__subtitle">
+          A once-a-day research brief for optimization, power systems, and sustainable energy.
+        </p>
+        <div class="hero__meta">
+          <span id="target-date" class="meta-pill">Loading date...</span>
+          <span id="updated-at" class="meta-pill meta-pill--soft">Preparing latest build...</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="overview">
+          <div class="stats-grid" id="stats-grid">
+            <article class="stat-card">
+              <span class="stat-card__label">Today's Picks</span>
+              <strong class="stat-card__value">--</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Sources</span>
+              <strong class="stat-card__value">--</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Strong Matches</span>
+              <strong class="stat-card__value">--</strong>
+            </article>
+          </div>
+
+          <section class="control-panel">
+            <div class="control-panel__group">
+              <span class="control-label">Source</span>
+              <div id="source-filters" class="chip-row"></div>
+            </div>
+            <div class="control-panel__group">
+              <span class="control-label">Relevance</span>
+              <div id="label-filters" class="chip-row"></div>
+            </div>
+            <label class="sort-control" for="sort-select">
+              <span class="control-label">Sort</span>
+              <select id="sort-select">
+                <option value="score">Highest score</option>
+                <option value="latest">Newest first</option>
+                <option value="journal">Journal A-Z</option>
+              </select>
+            </label>
+          </section>
+        </section>
+
+        <section class="content-section">
+          <div class="section-header">
+            <div>
+              <p class="section-header__eyebrow">Curated Feed</p>
+              <h2>Today's ranked reading list</h2>
+            </div>
+            <p id="result-count" class="section-header__count">Loading papers...</p>
+          </div>
+          <div id="error-banner" class="error-banner" hidden></div>
+          <div id="paper-list" class="paper-grid"></div>
+          <template id="paper-card-template">
+            <article class="paper-card">
+              <div class="paper-card__topline">
+                <span class="paper-card__source"></span>
+                <span class="paper-card__journal"></span>
+              </div>
+              <h3 class="paper-card__title"></h3>
+              <div class="paper-card__meta"></div>
+              <div class="paper-card__score-row">
+                <span class="score-badge"></span>
+                <span class="label-badge"></span>
+              </div>
+              <p class="paper-card__summary"></p>
+              <p class="paper-card__value"></p>
+              <div class="paper-card__footer">
+                <div class="paper-card__categories"></div>
+                <div class="paper-card__links">
+                  <a class="text-link primary-link" target="_blank" rel="noreferrer">Open paper</a>
+                  <a class="text-link secondary-link" target="_blank" rel="noreferrer" hidden>PDF</a>
+                </div>
+              </div>
+            </article>
+          </template>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
