@@ -44,14 +44,39 @@ CORE_KEYWORDS = {
 }
 
 JOURNAL_PRIORITIES = {
-    "nature energy": 1.6,
-    "nature communications": 1.25,
-    "joule": 1.45,
-    "ieee transactions on smart grid": 1.0,
-    "ieee transactions on power systems": 1.0,
-    "ieee transactions on sustainable energy": 0.95,
-    "ieee transactions on transportation electrification": 0.9,
     "arxiv": 0.65,
+    "nature energy": 1.5,
+    "nature communications": 1.15,
+    "joule": 1.4,
+    "ieee transactions on smart grid": 1.3,
+    "ieee transactions on power systems": 1.3,
+    "ieee transactions on sustainable energy": 1.25,
+    "ieee transactions on transportation electrification": 1.15,
+}
+
+CORE_IEEE_JOURNALS = {
+    "ieee transactions on smart grid",
+    "ieee transactions on power systems",
+    "ieee transactions on sustainable energy",
+    "ieee transactions on transportation electrification",
+}
+
+STRICT_DISCOVERY_JOURNALS = {
+    "nature communications",
+    "nature cities",
+    "nature reviews electrical engineering",
+    "nature reviews clean technology",
+}
+
+HIGH_FIT_DISCOVERY_JOURNALS = {
+    "nature energy",
+    "joule",
+    "applied energy",
+    "advances in applied energy",
+    "energy conversion and management",
+    "renewable energy",
+    "energy",
+    "arxiv",
 }
 
 
@@ -65,6 +90,51 @@ def score_records(records: list[PaperRecord], settings: Settings) -> list[PaperR
         record.relevance_label = _label_for_score(record.rule_score)
         record.score_reason = _build_reason(record, settings)
     return records
+
+
+def passes_rule_gate(record: PaperRecord) -> bool:
+    journal_lower = record.journal.lower()
+    keyword_hits = len(record.matched_keywords)
+
+    if journal_lower in CORE_IEEE_JOURNALS:
+        return keyword_hits >= 1 or record.rule_score >= 3.8
+
+    if journal_lower in STRICT_DISCOVERY_JOURNALS:
+        return keyword_hits >= 1
+
+    if journal_lower in HIGH_FIT_DISCOVERY_JOURNALS or record.source == "arxiv":
+        return keyword_hits >= 1 or record.rule_score >= 4.4
+
+    return keyword_hits >= 1 and record.rule_score >= 4.0
+
+
+def passes_display_gate(record: PaperRecord, llm_enabled: bool) -> bool:
+    journal_lower = record.journal.lower()
+    keyword_hits = len(record.matched_keywords)
+
+    if llm_enabled:
+        if journal_lower in CORE_IEEE_JOURNALS:
+            return record.llm_score >= 5.6 or (keyword_hits >= 1 and record.final_score >= 5.6)
+
+        if journal_lower in STRICT_DISCOVERY_JOURNALS:
+            return (
+                keyword_hits >= 1
+                and record.relevance_label != "Background Read"
+                and record.llm_score >= 5.8
+            )
+
+        return (
+            (keyword_hits >= 1 and record.relevance_label != "Background Read")
+            or record.llm_score >= 6.8
+        )
+
+    if journal_lower in CORE_IEEE_JOURNALS:
+        return keyword_hits >= 1 or record.rule_score >= 4.5
+
+    if journal_lower in STRICT_DISCOVERY_JOURNALS:
+        return keyword_hits >= 1 and record.rule_score >= 4.8
+
+    return keyword_hits >= 1 and record.rule_score >= 4.0
 
 
 def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywords: list[str]) -> float:
@@ -123,6 +193,9 @@ def _extract_matched_keywords(record: PaperRecord) -> list[str]:
 
 
 def _journal_priority(record: PaperRecord) -> float:
+    configured_weight = record.metadata.get("journal_weight")
+    if isinstance(configured_weight, (int, float)):
+        return float(configured_weight)
     return JOURNAL_PRIORITIES.get(record.journal.lower(), JOURNAL_PRIORITIES.get(record.source, 0.45))
 
 

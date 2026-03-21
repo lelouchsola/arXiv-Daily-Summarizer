@@ -11,7 +11,7 @@ from dateutil import parser as date_parser
 from pipeline.config import JournalSourceConfig
 from pipeline.models import PaperRecord
 
-CROSSREF_API_URL = "https://api.crossref.org/journals/{issn}/works"
+CROSSREF_WORKS_API_URL = "https://api.crossref.org/works"
 USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Summarizer)"
 
 
@@ -57,8 +57,8 @@ def _fetch_crossref_items(
     timeout_seconds: int,
 ) -> list[dict]:
     filters_to_try = [
-        f"from-online-pub-date:{min_date.isoformat()},until-online-pub-date:{target_date.isoformat()}",
-        f"from-pub-date:{min_date.isoformat()},until-pub-date:{target_date.isoformat()}",
+        f"issn:{issn},from-online-pub-date:{min_date.isoformat()},until-online-pub-date:{target_date.isoformat()}",
+        f"issn:{issn},from-pub-date:{min_date.isoformat()},until-pub-date:{target_date.isoformat()}",
     ]
     select_fields = ",".join(
         [
@@ -80,7 +80,7 @@ def _fetch_crossref_items(
 
     for filter_clause in filters_to_try:
         response = session.get(
-            CROSSREF_API_URL.format(issn=issn),
+            CROSSREF_WORKS_API_URL,
             params={
                 "filter": filter_clause,
                 "rows": 100,
@@ -136,6 +136,7 @@ def _item_to_record(item: dict, config: JournalSourceConfig) -> PaperRecord | No
         metadata={
             "publisher": item.get("publisher"),
             "issns": list(config.issns),
+            "journal_weight": config.journal_weight,
         },
     )
 
