@@ -24,7 +24,7 @@ class Settings:
     max_results_per_arxiv_category: int = 200
     summary_count: int = 20
     lookback_days: int = 3
-    enabled_sources: tuple[str, ...] = ("arxiv", "nature", "joule", "ieee")
+    enabled_sources: tuple[str, ...] = ("arxiv", "nature", "joule", "elsevier", "ieee")
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
@@ -50,7 +50,7 @@ def load_settings() -> Settings:
     )
     enabled_sources = tuple(
         source.strip()
-        for source in os.environ.get("ENABLED_SOURCES", "arxiv,nature,joule,ieee").split(",")
+        for source in os.environ.get("ENABLED_SOURCES", "arxiv,nature,joule,elsevier,ieee").split(",")
         if source.strip()
     )
 
@@ -70,10 +70,66 @@ def load_settings() -> Settings:
             group_key="discovery",
         ),
         JournalSourceConfig(
+            source_key="nature",
+            journal_title="Nature Cities",
+            issns=("2731-9997",),
+            journal_weight=0.98,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="nature",
+            journal_title="Nature Reviews Electrical Engineering",
+            issns=("2948-1201",),
+            journal_weight=1.18,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="nature",
+            journal_title="Nature Reviews Clean Technology",
+            issns=("3005-0685",),
+            journal_weight=1.16,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
             source_key="joule",
             journal_title="Joule",
             issns=("2542-4351",),
             journal_weight=1.4,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="elsevier",
+            journal_title="Applied Energy",
+            issns=("0306-2619", "1872-9118"),
+            journal_weight=1.14,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="elsevier",
+            journal_title="Advances in Applied Energy",
+            issns=("2666-7924",),
+            journal_weight=1.12,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="elsevier",
+            journal_title="Energy Conversion and Management",
+            issns=("0196-8904", "1879-2227"),
+            journal_weight=1.11,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="elsevier",
+            journal_title="Renewable Energy",
+            issns=("0960-1481", "1879-0682"),
+            journal_weight=1.08,
+            group_key="discovery",
+        ),
+        JournalSourceConfig(
+            source_key="elsevier",
+            journal_title="Energy",
+            issns=("0360-5442", "1873-6785"),
+            journal_weight=1.06,
             group_key="discovery",
         ),
         JournalSourceConfig(
