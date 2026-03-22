@@ -8,13 +8,6 @@ from pathlib import Path
 from .config import Settings
 from .models import PaperRecord
 
-CORE_IEEE_JOURNALS = {
-    "IEEE Transactions on Smart Grid",
-    "IEEE Transactions on Power Systems",
-    "IEEE Transactions on Sustainable Energy",
-    "IEEE Transactions on Transportation Electrification",
-}
-
 
 def write_site_payload(
     site_dir: Path,
@@ -26,8 +19,11 @@ def write_site_payload(
 ) -> None:
     site_dir.mkdir(parents=True, exist_ok=True)
 
-    discovery_records = [record for record in records if record.journal not in CORE_IEEE_JOURNALS]
-    core_ieee_records = [record for record in records if record.journal in CORE_IEEE_JOURNALS]
+    core_power_journals = {
+        config.journal_title for config in settings.source_configs if config.group_key == "core_ieee"
+    }
+    discovery_records = [record for record in records if record.journal not in core_power_journals]
+    core_power_records = [record for record in records if record.journal in core_power_journals]
 
     source_counts = Counter(record.source for record in records)
     journal_counts = Counter(record.journal for record in records)
@@ -51,15 +47,15 @@ def write_site_payload(
         "sections": {
             "discovery": {
                 "title": "跨来源发现榜",
-                "description": "汇总 arXiv、Nature、Joule 等来源，帮助你发现近三天最值得先扫一眼的新方向。",
+                "description": "仅汇总 arXiv、Nature 系列与 Joule，帮助你快速发现跨来源的新方向与方法信号。",
                 "count": len(discovery_records),
                 "papers": [record.to_dict(settings.timezone_name) for record in discovery_records],
             },
             "core_ieee": {
                 "title": "核心电力期刊榜",
-                "description": "TSG、TPWRS、TSTE、TTE 单独成池排序，避免核心电力期刊因领域天然契合而长期挤占主榜。",
-                "count": len(core_ieee_records),
-                "papers": [record.to_dict(settings.timezone_name) for record in core_ieee_records],
+                "description": "汇总 IEEE Transactions 与 Applied Energy、Advances in Applied Energy、Energy Conversion and Management、Renewable Energy、Energy 等核心电力能源期刊。",
+                "count": len(core_power_records),
+                "papers": [record.to_dict(settings.timezone_name) for record in core_power_records],
             },
         },
         "papers": [record.to_dict(settings.timezone_name) for record in records],
@@ -67,3 +63,4 @@ def write_site_payload(
 
     latest_json = site_dir / "latest.json"
     latest_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+

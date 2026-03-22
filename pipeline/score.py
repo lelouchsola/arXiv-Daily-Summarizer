@@ -135,11 +135,6 @@ STRICT_DISCOVERY_JOURNALS = {
 HIGH_FIT_DISCOVERY_JOURNALS = {
     "nature energy",
     "joule",
-    "applied energy",
-    "advances in applied energy",
-    "energy conversion and management",
-    "renewable energy",
-    "energy",
     "arxiv",
 }
 
@@ -312,3 +307,4 @@ def _build_reason(record: PaperRecord, settings: Settings) -> str:
     if not record.abstract_raw:
         return f"Published {recency_text}; metadata-only match from a high-value source."
     return f"Published {recency_text}; selected from the latest journal/article pool based on source quality and abstract coverage."
+

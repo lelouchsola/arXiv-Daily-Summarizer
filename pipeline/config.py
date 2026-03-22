@@ -104,35 +104,35 @@ def load_settings() -> Settings:
             journal_title="Applied Energy",
             issns=("0306-2619", "1872-9118"),
             journal_weight=1.14,
-            group_key="discovery",
+            group_key="core_ieee",
         ),
         JournalSourceConfig(
             source_key="elsevier",
             journal_title="Advances in Applied Energy",
             issns=("2666-7924",),
             journal_weight=1.12,
-            group_key="discovery",
+            group_key="core_ieee",
         ),
         JournalSourceConfig(
             source_key="elsevier",
             journal_title="Energy Conversion and Management",
             issns=("0196-8904", "1879-2227"),
             journal_weight=1.11,
-            group_key="discovery",
+            group_key="core_ieee",
         ),
         JournalSourceConfig(
             source_key="elsevier",
             journal_title="Renewable Energy",
             issns=("0960-1481", "1879-0682"),
             journal_weight=1.08,
-            group_key="discovery",
+            group_key="core_ieee",
         ),
         JournalSourceConfig(
             source_key="elsevier",
             journal_title="Energy",
             issns=("0360-5442", "1873-6785"),
             journal_weight=1.06,
-            group_key="discovery",
+            group_key="core_ieee",
         ),
         JournalSourceConfig(
             source_key="ieee",
@@ -182,3 +182,4 @@ def load_settings() -> Settings:
         crossref_mailto=os.environ.get("CROSSREF_MAILTO"),
         source_configs=source_configs,
     )
+
