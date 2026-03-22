@@ -1,6 +1,7 @@
 ﻿const state = {
   sourceFilter: "all",
   labelFilter: "all",
+  keywordFilter: "all",
   sortMode: "score",
   payload: null,
 };
@@ -54,7 +55,7 @@ function renderFrame() {
 
   buildFilterChips(
     document.getElementById("source-filters"),
-    ["all", ...Object.keys(meta.source_counts).sort()],
+    [{ value: "all", label: "全部" }, ...Object.keys(meta.source_counts).sort().map((source) => ({ value: source, label: source }))],
     state.sourceFilter,
     (value) => {
       state.sourceFilter = value;
@@ -63,14 +64,37 @@ function renderFrame() {
     },
   );
 
-  const labels = ["all", ...new Set(papers.map((paper) => paper.relevance_label))];
+  const labels = [...new Set(papers.map((paper) => paper.relevance_label))];
   buildFilterChips(
     document.getElementById("label-filters"),
-    labels,
+    [{ value: "all", label: "全部" }, ...labels.map((label) => ({ value: label, label }))],
     state.labelFilter,
     (value) => {
       state.labelFilter = value;
       renderFrame();
+      renderSections();
+    },
+  );
+
+  const keywordCounts = buildKeywordCounts(getBaseFilteredPapers(papers));
+  const keywordOptions = [
+    { value: "all", label: "全部" },
+    ...Array.from(keywordCounts.entries()).map(([keyword, count]) => ({
+      value: keyword,
+      label: `${keyword} (${count})`,
+    })),
+  ];
+  const keywordValues = new Set(keywordOptions.map((option) => option.value));
+  if (!keywordValues.has(state.keywordFilter)) {
+    state.keywordFilter = "all";
+  }
+
+  buildFilterChips(
+    document.getElementById("keyword-filters"),
+    keywordOptions,
+    state.keywordFilter,
+    (value) => {
+      state.keywordFilter = value;
       renderSections();
     },
   );
@@ -159,11 +183,20 @@ function renderPaperList(container, papers, emptyMessage) {
   });
 }
 
-function getVisiblePapers(papers) {
-  const filtered = [...papers].filter((paper) => {
+function getBaseFilteredPapers(papers) {
+  return [...papers].filter((paper) => {
     const sourceMatch = state.sourceFilter === "all" || paper.source === state.sourceFilter;
     const labelMatch = state.labelFilter === "all" || paper.relevance_label === state.labelFilter;
     return sourceMatch && labelMatch;
+  });
+}
+
+function getVisiblePapers(papers) {
+  const filtered = getBaseFilteredPapers(papers).filter((paper) => {
+    if (state.keywordFilter === "all") {
+      return true;
+    }
+    return Array.isArray(paper.matched_keywords) && paper.matched_keywords.includes(state.keywordFilter);
   });
 
   filtered.sort((left, right) => {
@@ -179,14 +212,33 @@ function getVisiblePapers(papers) {
   return filtered;
 }
 
+function buildKeywordCounts(papers) {
+  const counts = new Map();
+  papers.forEach((paper) => {
+    (paper.matched_keywords || []).forEach((keyword) => {
+      counts.set(keyword, (counts.get(keyword) || 0) + 1);
+    });
+  });
+
+  return new Map(
+    Array.from(counts.entries()).sort((left, right) => {
+      if (right[1] !== left[1]) {
+        return right[1] - left[1];
+      }
+      return left[0].localeCompare(right[0]);
+    }),
+  );
+}
+
 function buildFilterChips(container, options, activeValue, onClick) {
   container.innerHTML = "";
   options.forEach((option) => {
+    const normalized = typeof option === "string" ? { value: option, label: option } : option;
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = `chip${option === activeValue ? " is-active" : ""}`;
-    chip.textContent = option;
-    chip.addEventListener("click", () => onClick(option));
+    chip.className = `chip${normalized.value === activeValue ? " is-active" : ""}`;
+    chip.textContent = normalized.label;
+    chip.addEventListener("click", () => onClick(normalized.value));
     container.appendChild(chip);
   });
 }
