@@ -54,7 +54,7 @@ def main() -> int:
                 config=source_config,
                 target_date=target_date,
                 timezone_name=settings.timezone_name,
-                lookback_days=settings.lookback_days,
+                latest_rows=settings.crossref_latest_rows,
                 contact_email=settings.crossref_mailto,
             )
             print(f"Collected {len(journal_records)} records from {source_config.journal_title}.")
@@ -128,3 +128,8 @@ def _sort_key(record: PaperRecord) -> tuple[float, float]:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+
+

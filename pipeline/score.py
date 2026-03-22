@@ -206,8 +206,19 @@ def _current_local_date(settings: Settings):
 def _recency_bonus(record: PaperRecord, settings: Settings) -> float:
     published_local = record.published_at_local(settings.timezone_name).date()
     days_old = max((_current_local_date(settings) - published_local).days, 0)
-    bonus_map = {0: 1.2, 1: 0.75, 2: 0.35}
-    return bonus_map.get(days_old, 0.0)
+    if days_old <= 0:
+        return 1.2
+    if days_old == 1:
+        return 0.95
+    if days_old <= 3:
+        return 0.7
+    if days_old <= 7:
+        return 0.45
+    if days_old <= 14:
+        return 0.22
+    if days_old <= 30:
+        return 0.1
+    return 0.0
 
 
 def _label_for_score(score: float) -> str:
@@ -226,4 +237,6 @@ def _build_reason(record: PaperRecord, settings: Settings) -> str:
         return f"Published {recency_text}; strongest keyword signals: {', '.join(record.matched_keywords[:3])}."
     if not record.abstract_raw:
         return f"Published {recency_text}; metadata-only match from a high-value source."
-    return f"Published {recency_text}; selected from the recent three-day window based on source quality and abstract coverage."
+    return f"Published {recency_text}; selected from the latest journal/article pool based on source quality and abstract coverage."
+
+

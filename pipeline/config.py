@@ -22,6 +22,7 @@ class Settings:
     max_results_per_section: int = 10
     arxiv_categories: tuple[str, ...] = ("math.OC", "eess.SY")
     max_results_per_arxiv_category: int = 200
+    crossref_latest_rows: int = 50
     summary_count: int = 20
     lookback_days: int = 3
     enabled_sources: tuple[str, ...] = ("arxiv", "nature", "joule", "elsevier", "ieee")
@@ -41,6 +42,7 @@ def load_settings() -> Settings:
     )
     max_results = int(os.environ.get("MAX_RESULTS", "20"))
     max_results_per_section = int(os.environ.get("MAX_RESULTS_PER_SECTION", "10"))
+    crossref_latest_rows = int(os.environ.get("CROSSREF_LATEST_ROWS", "50"))
     summary_count = int(os.environ.get("SUMMARY_COUNT", str(max_results)))
     lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
     arxiv_categories = tuple(
@@ -170,6 +172,7 @@ def load_settings() -> Settings:
         max_results_per_section=max_results_per_section,
         arxiv_categories=arxiv_categories,
         max_results_per_arxiv_category=max_results * 10,
+        crossref_latest_rows=crossref_latest_rows,
         summary_count=summary_count,
         lookback_days=lookback_days,
         enabled_sources=enabled_sources,

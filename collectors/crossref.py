@@ -2,7 +2,7 @@
 
 import html
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
 import requests
@@ -19,7 +19,7 @@ def collect_crossref_journal_papers(
     config: JournalSourceConfig,
     target_date: date,
     timezone_name: str,
-    lookback_days: int,
+    latest_rows: int,
     contact_email: str | None = None,
     timeout_seconds: int = 30,
 ) -> list[PaperRecord]:
@@ -30,36 +30,31 @@ def collect_crossref_journal_papers(
     session.headers.update(headers)
 
     timezone_local = ZoneInfo(timezone_name)
-    min_date = target_date - timedelta(days=max(lookback_days - 1, 0))
     records: list[PaperRecord] = []
     seen_ids: set[str] = set()
 
     for issn in config.issns:
-        items = _fetch_crossref_items(session, issn, min_date, target_date, timeout_seconds)
+        items = _fetch_crossref_items(session, issn, latest_rows, timeout_seconds)
         for item in items:
             record = _item_to_record(item, config)
             if not record or record.id in seen_ids:
                 continue
             published_local_date = record.published_at.astimezone(timezone_local).date()
-            if published_local_date < min_date or published_local_date > target_date:
+            if published_local_date > target_date:
                 continue
             seen_ids.add(record.id)
             records.append(record)
 
+    records.sort(key=lambda record: record.published_at.timestamp(), reverse=True)
     return records
 
 
 def _fetch_crossref_items(
     session: requests.Session,
     issn: str,
-    min_date: date,
-    target_date: date,
+    latest_rows: int,
     timeout_seconds: int,
 ) -> list[dict]:
-    filters_to_try = [
-        f"issn:{issn},from-online-pub-date:{min_date.isoformat()},until-online-pub-date:{target_date.isoformat()}",
-        f"issn:{issn},from-pub-date:{min_date.isoformat()},until-pub-date:{target_date.isoformat()}",
-    ]
     select_fields = ",".join(
         [
             "DOI",
@@ -78,12 +73,17 @@ def _fetch_crossref_items(
         ]
     )
 
-    for filter_clause in filters_to_try:
+    query_variants = [
+        {"filter": f"issn:{issn}", "sort": "published", "order": "desc"},
+        {"filter": f"issn:{issn}", "sort": "created", "order": "desc"},
+    ]
+
+    for variant in query_variants:
         response = session.get(
             CROSSREF_WORKS_API_URL,
             params={
-                "filter": filter_clause,
-                "rows": 100,
+                **variant,
+                "rows": latest_rows,
                 "select": select_fields,
             },
             timeout=timeout_seconds,
