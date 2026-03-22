@@ -6,41 +6,105 @@ from zoneinfo import ZoneInfo
 from .config import Settings
 from .models import PaperRecord
 
+KEYWORD_GROUPS = {
+    "电力系统优化": {
+        "optimal power flow": 2.1,
+        "opf": 1.2,
+        "unit commitment": 1.9,
+        "economic dispatch": 1.8,
+        "security-constrained unit commitment": 2.0,
+        "scuc": 1.8,
+        "security-constrained economic dispatch": 1.8,
+        "sced": 1.6,
+        "distributed optimal power flow": 1.7,
+        "stochastic optimization": 1.7,
+        "robust optimization": 1.7,
+        "power system": 1.1,
+        "smart grid": 1.3,
+        "microgrid": 1.3,
+        "demand response": 1.4,
+        "energy storage": 1.3,
+        "distributed energy resource": 1.2,
+        "der": 1.0,
+        "virtual power plant": 1.3,
+        "flexibility": 1.0,
+    },
+    "AI+Optimization": {
+        "learn to optimize": 2.0,
+        "learning to optimize": 2.0,
+        "decision-focused": 2.0,
+        "decision-focused learning": 2.1,
+        "predict-and-optimize": 1.9,
+        "decision-aware": 1.7,
+        "end-to-end optimization": 1.7,
+        "differentiable optimization": 1.8,
+        "optimization surrogate": 1.4,
+        "surrogate model": 1.2,
+        "reinforcement learning": 1.3,
+        "imitation learning": 1.2,
+        "graph neural network": 1.1,
+    },
+    "源荷预测": {
+        "load forecasting": 1.8,
+        "net load forecasting": 1.8,
+        "renewable forecasting": 1.6,
+        "renewable generation forecasting": 1.7,
+        "wind power forecasting": 1.7,
+        "solar forecasting": 1.7,
+        "photovoltaic forecasting": 1.6,
+        "pv forecasting": 1.5,
+        "probabilistic forecasting": 1.6,
+        "time series forecasting": 1.2,
+        "spatio-temporal forecasting": 1.3,
+    },
+    "氢电互动": {
+        "hydrogen": 1.5,
+        "power-to-gas": 1.6,
+        "p2g": 1.1,
+        "electrolyzer": 1.5,
+        "fuel cell": 1.3,
+        "hydrogen energy storage": 1.6,
+        "hydrogen production": 1.2,
+        "integrated energy system": 1.4,
+        "multi-energy system": 1.4,
+        "sector coupling": 1.4,
+    },
+    "车网互动": {
+        "vehicle-to-grid": 1.8,
+        "v2g": 1.5,
+        "electric vehicle": 1.4,
+        "ev charging": 1.4,
+        "charging station": 1.3,
+        "charging scheduling": 1.4,
+        "transportation electrification": 1.4,
+        "vehicle-grid interaction": 1.7,
+        "fleet charging": 1.3,
+    },
+    "电网韧性": {
+        "resilience": 1.5,
+        "resilient operation": 1.6,
+        "grid resilience": 1.7,
+        "outage management": 1.5,
+        "service restoration": 1.7,
+        "network reconfiguration": 1.5,
+        "black start": 1.4,
+        "fault recovery": 1.2,
+        "disaster response": 1.2,
+        "typhoon": 1.1,
+        "extreme weather": 1.3,
+    },
+}
+
 CORE_KEYWORDS = {
-    "learn to optimize": 2.0,
-    "decision-focused": 2.0,
-    "predict-and-optimize": 1.9,
-    "end-to-end": 1.2,
-    "reinforcement learning": 1.4,
-    "machine learning": 1.0,
-    "data-driven": 1.0,
-    "power system": 1.4,
-    "energy system": 1.2,
-    "smart grid": 1.6,
-    "microgrid": 1.4,
-    "hydrogen": 1.4,
-    "power-to-gas": 1.4,
-    "p2g": 1.0,
-    "electrolyzer": 1.4,
-    "fuel cell": 1.2,
-    "unit commitment": 1.8,
-    "economic dispatch": 1.7,
-    "optimal power flow": 2.0,
-    "opf": 1.1,
-    "flexibility": 1.0,
-    "flexible resource": 1.1,
-    "demand response": 1.3,
-    "energy storage": 1.3,
-    "renewable": 1.1,
-    "stochastic optimization": 1.7,
-    "robust optimization": 1.7,
-    "resilience": 1.0,
-    "typhoon": 0.9,
-    "der": 0.8,
-    "novel": 0.6,
-    "efficient": 0.6,
-    "framework": 0.5,
-    "state-of-the-art": 0.6,
+    keyword: weight
+    for keywords in KEYWORD_GROUPS.values()
+    for keyword, weight in keywords.items()
+}
+
+KEYWORD_TO_GROUP = {
+    keyword: group_name
+    for group_name, keywords in KEYWORD_GROUPS.items()
+    for keyword in keywords
 }
 
 JOURNAL_PRIORITIES = {
@@ -84,6 +148,7 @@ def score_records(records: list[PaperRecord], settings: Settings) -> list[PaperR
     for record in records:
         matched_keywords = _extract_matched_keywords(record)
         record.matched_keywords = matched_keywords
+        record.matched_keyword_groups = _extract_matched_keyword_groups(matched_keywords)
         record.rule_score = round(_calculate_rule_score(record, settings, matched_keywords), 2)
         record.llm_score = record.rule_score
         record.final_score = record.rule_score
@@ -192,6 +257,15 @@ def _extract_matched_keywords(record: PaperRecord) -> list[str]:
     return matches[:6]
 
 
+def _extract_matched_keyword_groups(matched_keywords: list[str]) -> list[str]:
+    groups: list[str] = []
+    for keyword in matched_keywords:
+        group_name = KEYWORD_TO_GROUP.get(keyword)
+        if group_name and group_name not in groups:
+            groups.append(group_name)
+    return groups
+
+
 def _journal_priority(record: PaperRecord) -> float:
     configured_weight = record.metadata.get("journal_weight")
     if isinstance(configured_weight, (int, float)):
@@ -238,5 +312,3 @@ def _build_reason(record: PaperRecord, settings: Settings) -> str:
     if not record.abstract_raw:
         return f"Published {recency_text}; metadata-only match from a high-value source."
     return f"Published {recency_text}; selected from the latest journal/article pool based on source quality and abstract coverage."
-
-

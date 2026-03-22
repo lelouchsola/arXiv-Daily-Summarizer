@@ -1,7 +1,7 @@
 ﻿const state = {
   sourceFilter: "all",
   labelFilter: "all",
-  keywordFilter: "all",
+  keywordGroupFilter: "all",
   sortMode: "score",
   payload: null,
 };
@@ -76,25 +76,25 @@ function renderFrame() {
     },
   );
 
-  const keywordCounts = buildKeywordCounts(getBaseFilteredPapers(papers));
-  const keywordOptions = [
+  const keywordGroupCounts = buildKeywordGroupCounts(getBaseFilteredPapers(papers));
+  const keywordGroupOptions = [
     { value: "all", label: "全部" },
-    ...Array.from(keywordCounts.entries()).map(([keyword, count]) => ({
-      value: keyword,
-      label: `${keyword} (${count})`,
+    ...Array.from(keywordGroupCounts.entries()).map(([groupName, count]) => ({
+      value: groupName,
+      label: `${groupName} (${count})`,
     })),
   ];
-  const keywordValues = new Set(keywordOptions.map((option) => option.value));
-  if (!keywordValues.has(state.keywordFilter)) {
-    state.keywordFilter = "all";
+  const keywordGroupValues = new Set(keywordGroupOptions.map((option) => option.value));
+  if (!keywordGroupValues.has(state.keywordGroupFilter)) {
+    state.keywordGroupFilter = "all";
   }
 
   buildFilterChips(
     document.getElementById("keyword-filters"),
-    keywordOptions,
-    state.keywordFilter,
+    keywordGroupOptions,
+    state.keywordGroupFilter,
     (value) => {
-      state.keywordFilter = value;
+      state.keywordGroupFilter = value;
       renderSections();
     },
   );
@@ -164,6 +164,12 @@ function renderPaperList(container, papers, emptyMessage) {
     });
 
     const categories = fragment.querySelector(".paper-card__categories");
+    const keywordGroups = paper.matched_keyword_groups || [];
+    keywordGroups.slice(0, 3).forEach((groupName) => {
+      const badge = document.createElement("span");
+      badge.textContent = groupName;
+      categories.appendChild(badge);
+    });
     paper.categories.slice(0, 4).forEach((category) => {
       const badge = document.createElement("span");
       badge.textContent = category;
@@ -193,10 +199,10 @@ function getBaseFilteredPapers(papers) {
 
 function getVisiblePapers(papers) {
   const filtered = getBaseFilteredPapers(papers).filter((paper) => {
-    if (state.keywordFilter === "all") {
+    if (state.keywordGroupFilter === "all") {
       return true;
     }
-    return Array.isArray(paper.matched_keywords) && paper.matched_keywords.includes(state.keywordFilter);
+    return Array.isArray(paper.matched_keyword_groups) && paper.matched_keyword_groups.includes(state.keywordGroupFilter);
   });
 
   filtered.sort((left, right) => {
@@ -212,11 +218,11 @@ function getVisiblePapers(papers) {
   return filtered;
 }
 
-function buildKeywordCounts(papers) {
+function buildKeywordGroupCounts(papers) {
   const counts = new Map();
   papers.forEach((paper) => {
-    (paper.matched_keywords || []).forEach((keyword) => {
-      counts.set(keyword, (counts.get(keyword) || 0) + 1);
+    (paper.matched_keyword_groups || []).forEach((groupName) => {
+      counts.set(groupName, (counts.get(groupName) || 0) + 1);
     });
   });
 

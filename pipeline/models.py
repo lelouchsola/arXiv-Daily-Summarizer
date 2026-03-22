@@ -28,6 +28,7 @@ class PaperRecord:
     application_value: str = ""
     relevance_label: str = "Pending"
     matched_keywords: list[str] = field(default_factory=list)
+    matched_keyword_groups: list[str] = field(default_factory=list)
 
     def published_at_local(self, timezone_name: str) -> datetime:
         return self.published_at.astimezone(ZoneInfo(timezone_name))
@@ -58,4 +59,5 @@ class PaperRecord:
             "application_value": self.application_value,
             "relevance_label": self.relevance_label,
             "matched_keywords": self.matched_keywords,
+            "matched_keyword_groups": self.matched_keyword_groups,
         }
