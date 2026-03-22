@@ -19,15 +19,15 @@ KEYWORD_GROUPS = {
         "distributed optimal power flow": 1.7,
         "stochastic optimization": 1.7,
         "robust optimization": 1.7,
-        "power system": 1.1,
-        "smart grid": 1.3,
+        "power system": 1.3,
+        "smart grid": 1.4,
         "microgrid": 1.3,
         "demand response": 1.4,
         "energy storage": 1.3,
         "distributed energy resource": 1.2,
         "der": 1.0,
         "virtual power plant": 1.3,
-        "flexibility": 1.0,
+        "flexibility": 0.8,
     },
     "AI+Optimization": {
         "learn to optimize": 2.0,
@@ -58,15 +58,15 @@ KEYWORD_GROUPS = {
         "spatio-temporal forecasting": 1.3,
     },
     "氢电互动": {
-        "hydrogen": 1.5,
-        "power-to-gas": 1.6,
+        "hydrogen": 0.6,
+        "power-to-gas": 1.7,
         "p2g": 1.1,
-        "electrolyzer": 1.5,
-        "fuel cell": 1.3,
+        "electrolyzer": 0.8,
+        "fuel cell": 0.8,
         "hydrogen energy storage": 1.6,
-        "hydrogen production": 1.2,
-        "integrated energy system": 1.4,
-        "multi-energy system": 1.4,
+        "hydrogen production": 0.9,
+        "integrated energy system": 1.5,
+        "multi-energy system": 1.5,
         "sector coupling": 1.4,
     },
     "车网互动": {
@@ -81,7 +81,7 @@ KEYWORD_GROUPS = {
         "fleet charging": 1.3,
     },
     "电网韧性": {
-        "resilience": 1.5,
+        "resilience": 1.4,
         "resilient operation": 1.6,
         "grid resilience": 1.7,
         "outage management": 1.5,
@@ -107,35 +107,186 @@ KEYWORD_TO_GROUP = {
     for keyword in keywords
 }
 
-JOURNAL_PRIORITIES = {
-    "arxiv": 0.65,
-    "nature energy": 1.5,
-    "nature communications": 1.15,
-    "joule": 1.4,
-    "ieee transactions on smart grid": 1.3,
-    "ieee transactions on power systems": 1.3,
-    "ieee transactions on sustainable energy": 1.25,
-    "ieee transactions on transportation electrification": 1.15,
+DOMAIN_GROUPS = {
+    "电力系统优化",
+    "源荷预测",
+    "氢电互动",
+    "车网互动",
+    "电网韧性",
+}
+METHOD_GROUPS = {"AI+Optimization"}
+
+BROAD_RELEVANCE_KEYWORDS = {
+    "optimal power flow",
+    "opf",
+    "unit commitment",
+    "economic dispatch",
+    "security-constrained unit commitment",
+    "scuc",
+    "security-constrained economic dispatch",
+    "sced",
+    "distributed optimal power flow",
+    "stochastic optimization",
+    "robust optimization",
+    "power system",
+    "smart grid",
+    "microgrid",
+    "demand response",
+    "energy storage",
+    "distributed energy resource",
+    "virtual power plant",
+    "load forecasting",
+    "net load forecasting",
+    "renewable forecasting",
+    "renewable generation forecasting",
+    "wind power forecasting",
+    "solar forecasting",
+    "photovoltaic forecasting",
+    "pv forecasting",
+    "probabilistic forecasting",
+    "time series forecasting",
+    "spatio-temporal forecasting",
+    "power-to-gas",
+    "hydrogen energy storage",
+    "integrated energy system",
+    "multi-energy system",
+    "sector coupling",
+    "vehicle-to-grid",
+    "v2g",
+    "electric vehicle",
+    "ev charging",
+    "charging station",
+    "charging scheduling",
+    "transportation electrification",
+    "vehicle-grid interaction",
+    "fleet charging",
+    "resilience",
+    "resilient operation",
+    "grid resilience",
+    "outage management",
+    "service restoration",
+    "network reconfiguration",
+    "black start",
+    "fault recovery",
+    "disaster response",
+    "typhoon",
+    "extreme weather",
+    "learn to optimize",
+    "learning to optimize",
+    "decision-focused",
+    "decision-focused learning",
+    "predict-and-optimize",
+    "decision-aware",
+    "end-to-end optimization",
+    "differentiable optimization",
+    "optimization surrogate",
+    "surrogate model",
+    "reinforcement learning",
+    "imitation learning",
+    "graph neural network",
 }
 
-CORE_IEEE_JOURNALS = {
+POWER_SYSTEM_SIGNAL_KEYWORDS = {
+    "optimal power flow",
+    "opf",
+    "unit commitment",
+    "economic dispatch",
+    "security-constrained unit commitment",
+    "scuc",
+    "security-constrained economic dispatch",
+    "sced",
+    "distributed optimal power flow",
+    "power system",
+    "smart grid",
+    "microgrid",
+    "demand response",
+    "energy storage",
+    "distributed energy resource",
+    "der",
+    "virtual power plant",
+    "load forecasting",
+    "net load forecasting",
+    "renewable forecasting",
+    "renewable generation forecasting",
+    "wind power forecasting",
+    "solar forecasting",
+    "photovoltaic forecasting",
+    "pv forecasting",
+    "vehicle-to-grid",
+    "v2g",
+    "ev charging",
+    "charging scheduling",
+    "transportation electrification",
+    "resilience",
+    "resilient operation",
+    "grid resilience",
+    "outage management",
+    "service restoration",
+    "network reconfiguration",
+    "black start",
+}
+
+POWER_CONTEXT_TERMS = {
+    "power system",
+    "power systems",
+    "electric power",
+    "grid",
+    "electric grid",
+    "electricity",
+    "smart grid",
+    "microgrid",
+    "dispatch",
+    "unit commitment",
+    "load forecasting",
+    "vehicle-to-grid",
+    "electric vehicle",
+    "charging",
+    "integrated energy system",
+    "multi-energy system",
+    "energy system",
+    "renewable generation",
+    "renewable energy",
+}
+
+MATERIAL_RISK_TERMS = {
+    "catalyst",
+    "electrocatalyst",
+    "photocatalyst",
+    "nanoparticle",
+    "nanomaterial",
+    "membrane",
+    "membranes",
+    "anode",
+    "cathode",
+    "alloy",
+    "surface chemistry",
+    "electrode",
+    "electrochemical synthesis",
+    "material design",
+    "materials chemistry",
+}
+
+JOURNAL_PRIORITIES = {
+    "arxiv": 0.55,
+    "nature energy": 1.2,
+    "nature communications": 0.9,
+    "joule": 1.1,
+    "ieee transactions on smart grid": 1.15,
+    "ieee transactions on power systems": 1.15,
+    "ieee transactions on sustainable energy": 1.1,
+    "ieee transactions on transportation electrification": 1.0,
+}
+
+CORE_POWER_JOURNALS = {
     "ieee transactions on smart grid",
     "ieee transactions on power systems",
     "ieee transactions on sustainable energy",
     "ieee transactions on transportation electrification",
-}
-
-STRICT_DISCOVERY_JOURNALS = {
-    "nature communications",
-    "nature cities",
-    "nature reviews electrical engineering",
-    "nature reviews clean technology",
-}
-
-HIGH_FIT_DISCOVERY_JOURNALS = {
-    "nature energy",
-    "joule",
-    "arxiv",
+    "applied energy",
+    "advances in applied energy",
+    "energy conversion and management",
+    "renewable energy",
+    "energy",
 }
 
 
@@ -153,93 +304,60 @@ def score_records(records: list[PaperRecord], settings: Settings) -> list[PaperR
 
 
 def passes_rule_gate(record: PaperRecord) -> bool:
-    journal_lower = record.journal.lower()
-    keyword_hits = len(record.matched_keywords)
-
-    if journal_lower in CORE_IEEE_JOURNALS:
-        return keyword_hits >= 1 or record.rule_score >= 3.8
-
-    if journal_lower in STRICT_DISCOVERY_JOURNALS:
-        return keyword_hits >= 1
-
-    if journal_lower in HIGH_FIT_DISCOVERY_JOURNALS or record.source == "arxiv":
-        return keyword_hits >= 1 or record.rule_score >= 4.4
-
-    return keyword_hits >= 1 and record.rule_score >= 4.0
+    return _has_minimum_relevance(record)
 
 
 def passes_display_gate(record: PaperRecord, llm_enabled: bool) -> bool:
-    journal_lower = record.journal.lower()
-    keyword_hits = len(record.matched_keywords)
+    if not _has_minimum_relevance(record):
+        return False
 
     if llm_enabled:
-        if journal_lower in CORE_IEEE_JOURNALS:
-            return record.llm_score >= 5.6 or (keyword_hits >= 1 and record.final_score >= 5.6)
+        return record.final_score >= 4.2 or record.relevance_label != "Background Read"
 
-        if journal_lower in STRICT_DISCOVERY_JOURNALS:
-            return (
-                keyword_hits >= 1
-                and record.relevance_label != "Background Read"
-                and record.llm_score >= 5.8
-            )
-
-        return (
-            (keyword_hits >= 1 and record.relevance_label != "Background Read")
-            or record.llm_score >= 6.8
-        )
-
-    if journal_lower in CORE_IEEE_JOURNALS:
-        return keyword_hits >= 1 or record.rule_score >= 4.5
-
-    if journal_lower in STRICT_DISCOVERY_JOURNALS:
-        return keyword_hits >= 1 and record.rule_score >= 4.8
-
-    return keyword_hits >= 1 and record.rule_score >= 4.0
+    return record.rule_score >= 4.0
 
 
 def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywords: list[str]) -> float:
-    score = 0.0
     title_lower = record.title.lower()
-    abstract_lower = record.abstract_raw.lower()
+
+    domain_score = 0.0
+    method_score = 0.0
+    broad_keyword_hits = 0
 
     for keyword in matched_keywords:
         weight = CORE_KEYWORDS[keyword]
-        if keyword in title_lower:
-            score += weight
-        elif keyword in abstract_lower:
-            score += weight * 0.5
+        occurrence_weight = 1.0 if keyword in title_lower else 0.55
+        contribution = weight * occurrence_weight
+        group_name = KEYWORD_TO_GROUP[keyword]
 
-    abstract_length = len(record.abstract_raw)
-    if abstract_length > 1600:
-        score += 1.1
-    elif abstract_length > 800:
-        score += 0.8
-    elif abstract_length > 400:
-        score += 0.45
-    elif abstract_length < 120:
-        score -= 1.0
+        if group_name in DOMAIN_GROUPS:
+            domain_score += contribution
+        elif group_name in METHOD_GROUPS:
+            method_score += contribution
 
-    author_count = len(record.authors)
-    if 3 <= author_count <= 8:
-        score += 0.8
-    elif author_count > 8:
-        score += 0.4
+        if keyword in BROAD_RELEVANCE_KEYWORDS:
+            broad_keyword_hits += 1
 
-    title_word_count = len(record.title.split())
-    if title_word_count < 5:
-        score -= 0.5
-    elif 6 <= title_word_count <= 18:
-        score += 0.5
-    elif title_word_count > 28:
-        score -= 0.3
-
+    score = 0.0
+    score += min(domain_score, 4.8)
+    score += min(method_score, 1.15)
+    score += _power_system_signal_bonus(record)
+    score += min(len(record.matched_keyword_groups) * 0.15, 0.45)
     score += _journal_priority(record)
     score += _recency_bonus(record, settings)
+    score += _metadata_quality_bonus(record)
+
+    if broad_keyword_hits >= 4:
+        score += 0.2
+    elif broad_keyword_hits >= 2:
+        score += 0.1
+
+    score -= _material_risk_penalty(record)
 
     if record.source == "arxiv":
         primary_category = (record.metadata.get("primary_category") or "").lower()
         if primary_category in {category.lower() for category in settings.arxiv_categories}:
-            score += 0.3
+            score += 0.25
 
     return max(0.0, min(score, 10.0))
 
@@ -261,11 +379,75 @@ def _extract_matched_keyword_groups(matched_keywords: list[str]) -> list[str]:
     return groups
 
 
+def _has_minimum_relevance(record: PaperRecord) -> bool:
+    broad_hits = sum(1 for keyword in record.matched_keywords if keyword in BROAD_RELEVANCE_KEYWORDS)
+    if broad_hits >= 1:
+        return True
+
+    text = f"{record.title} {record.abstract_raw}".lower()
+    power_context = any(term in text for term in POWER_CONTEXT_TERMS)
+    core_power_journal = record.journal.lower() in CORE_POWER_JOURNALS
+    material_dominated = _material_risk_penalty(record) >= 1.6
+
+    if core_power_journal and power_context and not material_dominated:
+        return True
+
+    return False
+
+
+def _power_system_signal_bonus(record: PaperRecord) -> float:
+    signal_hits = sum(1 for keyword in record.matched_keywords if keyword in POWER_SYSTEM_SIGNAL_KEYWORDS)
+    return min(signal_hits * 0.42, 1.25)
+
+
+def _material_risk_penalty(record: PaperRecord) -> float:
+    text = f"{record.title} {record.abstract_raw}".lower()
+    risk_hits = sum(1 for term in MATERIAL_RISK_TERMS if term in text)
+    if risk_hits == 0:
+        return 0.0
+
+    broad_hits = sum(1 for keyword in record.matched_keywords if keyword in BROAD_RELEVANCE_KEYWORDS)
+    if broad_hits == 0:
+        return 2.4
+    if broad_hits == 1:
+        return 1.1
+    return 0.4
+
+
 def _journal_priority(record: PaperRecord) -> float:
     configured_weight = record.metadata.get("journal_weight")
     if isinstance(configured_weight, (int, float)):
         return float(configured_weight)
-    return JOURNAL_PRIORITIES.get(record.journal.lower(), JOURNAL_PRIORITIES.get(record.source, 0.45))
+    return JOURNAL_PRIORITIES.get(record.journal.lower(), JOURNAL_PRIORITIES.get(record.source, 0.4))
+
+
+def _metadata_quality_bonus(record: PaperRecord) -> float:
+    score = 0.0
+    abstract_length = len(record.abstract_raw)
+    if abstract_length > 1400:
+        score += 0.7
+    elif abstract_length > 800:
+        score += 0.48
+    elif abstract_length > 350:
+        score += 0.22
+    elif abstract_length < 120:
+        score -= 0.7
+
+    author_count = len(record.authors)
+    if 3 <= author_count <= 8:
+        score += 0.35
+    elif author_count > 8:
+        score += 0.15
+
+    title_word_count = len(record.title.split())
+    if title_word_count < 5:
+        score -= 0.35
+    elif 6 <= title_word_count <= 18:
+        score += 0.25
+    elif title_word_count > 28:
+        score -= 0.2
+
+    return score
 
 
 def _current_local_date(settings: Settings):
@@ -276,24 +458,28 @@ def _recency_bonus(record: PaperRecord, settings: Settings) -> float:
     published_local = record.published_at_local(settings.timezone_name).date()
     days_old = max((_current_local_date(settings) - published_local).days, 0)
     if days_old <= 0:
-        return 1.2
+        return 2.0
     if days_old == 1:
-        return 0.95
+        return 1.6
     if days_old <= 3:
-        return 0.7
+        return 1.2
     if days_old <= 7:
-        return 0.45
+        return 0.95
     if days_old <= 14:
-        return 0.22
+        return 0.45
+    if days_old <= 21:
+        return 0.05
     if days_old <= 30:
-        return 0.1
-    return 0.0
+        return -0.75
+    if days_old <= 45:
+        return -1.8
+    return -2.8
 
 
 def _label_for_score(score: float) -> str:
-    if score >= 7.8:
+    if score >= 7.2:
         return "Strong Match"
-    if score >= 5.2:
+    if score >= 5.0:
         return "Promising"
     return "Background Read"
 
@@ -303,8 +489,7 @@ def _build_reason(record: PaperRecord, settings: Settings) -> str:
     days_old = max((_current_local_date(settings) - published_local).days, 0)
     recency_text = {0: "today", 1: "yesterday"}.get(days_old, f"{days_old} days ago")
     if record.matched_keywords:
-        return f"Published {recency_text}; strongest keyword signals: {', '.join(record.matched_keywords[:3])}."
+        return f"Published {recency_text}; strongest signals: {', '.join(record.matched_keywords[:3])}."
     if not record.abstract_raw:
         return f"Published {recency_text}; metadata-only match from a high-value source."
-    return f"Published {recency_text}; selected from the latest journal/article pool based on source quality and abstract coverage."
-
+    return f"Published {recency_text}; selected by combined relevance, recency, and source quality."
