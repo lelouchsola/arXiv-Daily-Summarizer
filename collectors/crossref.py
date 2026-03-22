@@ -2,7 +2,7 @@
 
 import html
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import requests
@@ -20,6 +20,7 @@ def collect_crossref_journal_papers(
     target_date: date,
     timezone_name: str,
     latest_rows: int,
+    max_age_days: int,
     contact_email: str | None = None,
     timeout_seconds: int = 30,
 ) -> list[PaperRecord]:
@@ -30,6 +31,7 @@ def collect_crossref_journal_papers(
     session.headers.update(headers)
 
     timezone_local = ZoneInfo(timezone_name)
+    earliest_allowed_date = target_date - timedelta(days=max(max_age_days - 1, 0))
     records: list[PaperRecord] = []
     seen_ids: set[str] = set()
 
@@ -40,7 +42,7 @@ def collect_crossref_journal_papers(
             if not record or record.id in seen_ids:
                 continue
             published_local_date = record.published_at.astimezone(timezone_local).date()
-            if published_local_date > target_date:
+            if published_local_date > target_date or published_local_date < earliest_allowed_date:
                 continue
             seen_ids.add(record.id)
             records.append(record)
