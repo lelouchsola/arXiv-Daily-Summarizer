@@ -196,16 +196,6 @@ body {
   font-size: 0.92rem;
   line-height: 1.7;
 }
-.meta-pill, .chip, .score-badge, .label-badge, .paper-card__age, .digest-section__count {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: var(--radius-sm);
-  padding: 8px 14px;
-  font-size: 0.8rem;
-}
-.meta-pill { background: rgba(14, 90, 84, 0.1); color: var(--accent-strong); }
-.meta-pill--soft { background: rgba(93, 69, 45, 0.08); color: var(--ink-soft); }
 .layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);

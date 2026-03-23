@@ -58,9 +58,27 @@ function renderFrame() {
   const { meta, papers } = state.payload;
   document.getElementById("site-title").textContent = meta.title;
   document.getElementById("site-subtitle").textContent = meta.subtitle;
-  document.getElementById("target-date").textContent = `更新日期 ${meta.target_date}`;
-  document.getElementById("updated-at").textContent = `生成时间 ${formatDateTime(meta.generated_at, meta.timezone)}`;
-  document.getElementById("window-pill").textContent = `近 ${meta.lookback_days} 天窗口`;
+  document.getElementById("target-date").textContent = `Date ${meta.target_date}`;
+  document.getElementById("updated-at").textContent = `Generated ${formatDateTime(meta.generated_at, meta.timezone)}`;
+  document.getElementById("window-pill").textContent = `${meta.lookback_days}-day window`;
+
+  const rssLink = document.getElementById("rss-link");
+  if (rssLink) {
+    rssLink.href = meta.feed_url || "./feed.xml";
+  }
+
+  const emailSubscribeLink = document.getElementById("email-subscribe-link");
+  const subscriptionNote = document.getElementById("subscription-note");
+  if (emailSubscribeLink && subscriptionNote) {
+    if (meta.subscribe_url) {
+      emailSubscribeLink.href = meta.subscribe_url;
+      emailSubscribeLink.hidden = false;
+      subscriptionNote.textContent = "You can subscribe by email directly, or add this RSS feed to your reader or an RSS-to-email service.";
+    } else {
+      emailSubscribeLink.hidden = true;
+      subscriptionNote.textContent = "Add this RSS feed to Feedly, Inoreader, or any RSS reader to follow daily updates.";
+    }
+  }
 
   const statsGrid = document.getElementById("stats-grid");
   statsGrid.innerHTML = "";
