@@ -18,6 +18,8 @@ class Settings:
     timezone_name: str = "Asia/Shanghai"
     site_title: str = "每日论文精选推送"
     site_subtitle: str = "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。"
+    site_base_url: str = "https://lelouchsola.github.io/arXiv-Daily-Summarizer/"
+    subscribe_url: str | None = None
     max_results: int = 20
     max_results_per_section: int = 10
     arxiv_categories: tuple[str, ...] = ("math.OC", "eess.SY")
@@ -41,6 +43,8 @@ def load_settings() -> Settings:
         "SITE_SUBTITLE",
         "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。",
     )
+    site_base_url = os.environ.get("SITE_BASE_URL", "https://lelouchsola.github.io/arXiv-Daily-Summarizer/").strip()
+    subscribe_url = os.environ.get("SUBSCRIBE_URL")
     max_results = int(os.environ.get("MAX_RESULTS", "20"))
     max_results_per_section = int(os.environ.get("MAX_RESULTS_PER_SECTION", "10"))
     crossref_latest_rows = int(os.environ.get("CROSSREF_LATEST_ROWS", "50"))
@@ -170,6 +174,8 @@ def load_settings() -> Settings:
         timezone_name=timezone_name,
         site_title=site_title,
         site_subtitle=site_subtitle,
+        site_base_url=site_base_url,
+        subscribe_url=subscribe_url.strip() if subscribe_url and subscribe_url.strip() else None,
         max_results=max_results,
         max_results_per_section=max_results_per_section,
         arxiv_categories=arxiv_categories,
@@ -185,4 +191,3 @@ def load_settings() -> Settings:
         crossref_mailto=os.environ.get("CROSSREF_MAILTO"),
         source_configs=source_configs,
     )
-

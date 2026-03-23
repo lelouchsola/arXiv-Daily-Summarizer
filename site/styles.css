@@ -157,6 +157,45 @@ body {
   gap: 12px;
   margin-top: 4px;
 }
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.hero__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-size: 0.86rem;
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+.hero__cta:hover, .hero__cta:focus-visible {
+  transform: translateY(-1px);
+}
+.hero__cta--primary {
+  background: var(--accent);
+  color: #fcfbf8;
+}
+.hero__cta--primary:hover, .hero__cta--primary:focus-visible {
+  background: var(--accent-strong);
+}
+.hero__cta--secondary {
+  background: rgba(14, 90, 84, 0.08);
+  color: var(--accent-strong);
+  border-color: rgba(14, 90, 84, 0.18);
+}
+.hero__subscription-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
 .meta-pill, .chip, .score-badge, .label-badge, .paper-card__age, .digest-section__count {
   display: inline-flex;
   align-items: center;

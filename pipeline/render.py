@@ -4,6 +4,8 @@ import json
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urljoin
+from xml.sax.saxutils import escape
 
 from .config import Settings
 from .models import PaperRecord
@@ -18,6 +20,10 @@ def write_site_payload(
     source_errors: list[str],
 ) -> None:
     site_dir.mkdir(parents=True, exist_ok=True)
+
+    site_base_url = _normalize_base_url(settings.site_base_url)
+    homepage_url = site_base_url
+    feed_url = urljoin(site_base_url, "feed.xml")
 
     core_power_journals = {
         config.journal_title for config in settings.source_configs if config.group_key == "core_ieee"
@@ -36,6 +42,10 @@ def write_site_payload(
         "meta": {
             "title": settings.site_title,
             "subtitle": settings.site_subtitle,
+            "site_base_url": site_base_url,
+            "homepage_url": homepage_url,
+            "feed_url": feed_url,
+            "subscribe_url": settings.subscribe_url,
             "target_date": target_date.isoformat(),
             "generated_at": generated_at.isoformat(),
             "timezone": settings.timezone_name,
@@ -72,3 +82,67 @@ def write_site_payload(
 
     latest_json = site_dir / "latest.json"
     latest_json.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_feed_xml(
+        site_dir=site_dir,
+        homepage_url=homepage_url,
+        feed_url=feed_url,
+        settings=settings,
+        target_date=target_date,
+        generated_at=generated_at,
+        records=records,
+    )
+
+
+def _write_feed_xml(
+    site_dir: Path,
+    homepage_url: str,
+    feed_url: str,
+    settings: Settings,
+    target_date: date,
+    generated_at: datetime,
+    records: list[PaperRecord],
+) -> None:
+    top_records = sorted(records, key=lambda record: record.final_score, reverse=True)[:5]
+    summary_lines = []
+    for index, record in enumerate(top_records, start=1):
+        summary_lines.append(
+            f"{index}. {record.title} [{record.journal}] - {record.final_score:.1f}/10"
+        )
+    if not summary_lines:
+        summary_lines.append("今日没有达到展示门槛的新论文。")
+
+    description = (
+        f"{settings.site_title} · {target_date.isoformat()}\n"
+        + "\n".join(summary_lines)
+        + f"\n\n访问完整网页：{homepage_url}"
+    )
+    guid = f"{homepage_url}#digest-{target_date.isoformat()}"
+    pub_date = generated_at.strftime("%a, %d %b %Y %H:%M:%S %z")
+
+    feed_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>{escape(settings.site_title)}</title>
+    <link>{escape(homepage_url)}</link>
+    <description>{escape(settings.site_subtitle)}</description>
+    <language>zh-CN</language>
+    <lastBuildDate>{escape(pub_date)}</lastBuildDate>
+    <atom:link href="{escape(feed_url)}" rel="self" type="application/rss+xml" xmlns:atom="http://www.w3.org/2005/Atom" />
+    <item>
+      <title>{escape(f'{settings.site_title} · {target_date.isoformat()}')}</title>
+      <link>{escape(homepage_url)}</link>
+      <guid isPermaLink="false">{escape(guid)}</guid>
+      <pubDate>{escape(pub_date)}</pubDate>
+      <description>{escape(description)}</description>
+    </item>
+  </channel>
+</rss>
+'''
+    (site_dir / "feed.xml").write_text(feed_xml, encoding="utf-8")
+
+
+def _normalize_base_url(base_url: str) -> str:
+    normalized = base_url.strip()
+    if not normalized.endswith("/"):
+        normalized += "/"
+    return normalized
