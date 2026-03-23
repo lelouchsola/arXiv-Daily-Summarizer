@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from datetime import datetime
+import re
 from zoneinfo import ZoneInfo
 
 from .config import Settings
@@ -277,8 +278,8 @@ MATERIAL_RISK_TERMS = {
 
 JOURNAL_PRIORITIES = {
     "arxiv": 0.55,
-    "nature energy": 1.2,
-    "nature communications": 0.9,
+    "nature energy": 1.1,
+    "nature communications": 1.1,
     "joule": 1.1,
     "ieee transactions on smart grid": 1.15,
     "ieee transactions on power systems": 1.15,
@@ -342,7 +343,7 @@ def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywo
 
     for keyword in matched_keywords:
         weight = CORE_KEYWORDS[keyword]
-        occurrence_weight = 1.0 if keyword in title_lower else 0.55
+        occurrence_weight = 1.0 if _keyword_in_text(keyword, title_lower) else 0.55
         contribution = weight * occurrence_weight
         group_name = KEYWORD_TO_GROUP[keyword]
 
@@ -381,9 +382,14 @@ def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywo
 def _extract_matched_keywords(record: PaperRecord) -> list[str]:
     title_lower = record.title.lower()
     abstract_lower = record.abstract_raw.lower()
-    matches = [keyword for keyword in CORE_KEYWORDS if keyword in title_lower or keyword in abstract_lower]
+    matches = [keyword for keyword in CORE_KEYWORDS if _keyword_in_text(keyword, title_lower) or _keyword_in_text(keyword, abstract_lower)]
     matches.sort(key=lambda keyword: CORE_KEYWORDS[keyword], reverse=True)
     return matches[:6]
+
+
+def _keyword_in_text(keyword: str, text: str) -> bool:
+    pattern = rf"(?<![a-z0-9]){re.escape(keyword.lower())}(?![a-z0-9])"
+    return re.search(pattern, text.lower()) is not None
 
 
 def _extract_matched_keyword_groups(matched_keywords: list[str]) -> list[str]:
@@ -409,13 +415,13 @@ def _has_minimum_relevance(record: PaperRecord) -> bool:
         return broad_hits >= 1 or power_context
 
     has_required_group = any(group in DISCOVERY_REQUIRED_GROUPS for group in record.matched_keyword_groups)
-    has_method_and_power = "AI+Optimization" in record.matched_keyword_groups and power_context
+    has_method_group = "AI+Optimization" in record.matched_keyword_groups
     power_signal_hits = sum(1 for keyword in record.matched_keywords if keyword in POWER_SYSTEM_SIGNAL_KEYWORDS)
 
-    if power_signal_hits >= 1 and (has_required_group or has_method_and_power):
+    if power_signal_hits >= 1 and (has_required_group or has_method_group):
         return True
 
-    if broad_hits >= 2 and has_required_group:
+    if has_method_group and power_context and broad_hits >= 1:
         return True
 
     return False
