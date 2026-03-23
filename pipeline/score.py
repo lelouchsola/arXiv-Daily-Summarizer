@@ -264,6 +264,15 @@ MATERIAL_RISK_TERMS = {
     "electrochemical synthesis",
     "material design",
     "materials chemistry",
+    "perovskite",
+    "semiconductor",
+    "thin film",
+    "thin-film",
+    "surface engineering",
+    "synthesis",
+    "characterization",
+    "crystal structure",
+    "composite",
 }
 
 JOURNAL_PRIORITIES = {
@@ -287,6 +296,13 @@ CORE_POWER_JOURNALS = {
     "energy conversion and management",
     "renewable energy",
     "energy",
+}
+
+DISCOVERY_REQUIRED_GROUPS = {
+    "\u7535\u529b\u7cfb\u7edf\u4f18\u5316",
+    "\u6e90\u8377\u9884\u6d4b",
+    "\u8f66\u7f51\u4e92\u52a8",
+    "\u7535\u7f51\u97e7\u6027",
 }
 
 
@@ -339,18 +355,18 @@ def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywo
             broad_keyword_hits += 1
 
     score = 0.0
-    score += min(domain_score, 4.8)
-    score += min(method_score, 1.15)
+    score += min(domain_score, 5.35)
+    score += min(method_score, 1.55)
     score += _power_system_signal_bonus(record)
-    score += min(len(record.matched_keyword_groups) * 0.15, 0.45)
+    score += min(len(record.matched_keyword_groups) * 0.2, 0.65)
     score += _journal_priority(record)
     score += _recency_bonus(record, settings)
     score += _metadata_quality_bonus(record)
 
     if broad_keyword_hits >= 4:
-        score += 0.2
+        score += 0.45
     elif broad_keyword_hits >= 2:
-        score += 0.1
+        score += 0.22
 
     score -= _material_risk_penalty(record)
 
@@ -380,16 +396,26 @@ def _extract_matched_keyword_groups(matched_keywords: list[str]) -> list[str]:
 
 
 def _has_minimum_relevance(record: PaperRecord) -> bool:
+    journal_lower = record.journal.lower()
     broad_hits = sum(1 for keyword in record.matched_keywords if keyword in BROAD_RELEVANCE_KEYWORDS)
-    if broad_hits >= 1:
-        return True
-
     text = f"{record.title} {record.abstract_raw}".lower()
     power_context = any(term in text for term in POWER_CONTEXT_TERMS)
-    core_power_journal = record.journal.lower() in CORE_POWER_JOURNALS
     material_dominated = _material_risk_penalty(record) >= 1.6
 
-    if core_power_journal and power_context and not material_dominated:
+    if material_dominated:
+        return False
+
+    if journal_lower in CORE_POWER_JOURNALS:
+        return broad_hits >= 1 or power_context
+
+    has_required_group = any(group in DISCOVERY_REQUIRED_GROUPS for group in record.matched_keyword_groups)
+    has_method_and_power = "AI+Optimization" in record.matched_keyword_groups and power_context
+    power_signal_hits = sum(1 for keyword in record.matched_keywords if keyword in POWER_SYSTEM_SIGNAL_KEYWORDS)
+
+    if power_signal_hits >= 1 and (has_required_group or has_method_and_power):
+        return True
+
+    if broad_hits >= 2 and has_required_group:
         return True
 
     return False
@@ -397,7 +423,7 @@ def _has_minimum_relevance(record: PaperRecord) -> bool:
 
 def _power_system_signal_bonus(record: PaperRecord) -> float:
     signal_hits = sum(1 for keyword in record.matched_keywords if keyword in POWER_SYSTEM_SIGNAL_KEYWORDS)
-    return min(signal_hits * 0.42, 1.25)
+    return min(signal_hits * 0.55, 1.65)
 
 
 def _material_risk_penalty(record: PaperRecord) -> float:
@@ -408,10 +434,10 @@ def _material_risk_penalty(record: PaperRecord) -> float:
 
     broad_hits = sum(1 for keyword in record.matched_keywords if keyword in BROAD_RELEVANCE_KEYWORDS)
     if broad_hits == 0:
-        return 2.4
+        return 3.0
     if broad_hits == 1:
-        return 1.1
-    return 0.4
+        return 1.7
+    return 0.6
 
 
 def _journal_priority(record: PaperRecord) -> float:
@@ -425,25 +451,25 @@ def _metadata_quality_bonus(record: PaperRecord) -> float:
     score = 0.0
     abstract_length = len(record.abstract_raw)
     if abstract_length > 1400:
-        score += 0.7
+        score += 0.85
     elif abstract_length > 800:
-        score += 0.48
+        score += 0.6
     elif abstract_length > 350:
-        score += 0.22
+        score += 0.3
     elif abstract_length < 120:
         score -= 0.7
 
     author_count = len(record.authors)
     if 3 <= author_count <= 8:
-        score += 0.35
+        score += 0.45
     elif author_count > 8:
-        score += 0.15
+        score += 0.2
 
     title_word_count = len(record.title.split())
     if title_word_count < 5:
         score -= 0.35
     elif 6 <= title_word_count <= 18:
-        score += 0.25
+        score += 0.35
     elif title_word_count > 28:
         score -= 0.2
 
@@ -458,28 +484,28 @@ def _recency_bonus(record: PaperRecord, settings: Settings) -> float:
     published_local = record.published_at_local(settings.timezone_name).date()
     days_old = max((_current_local_date(settings) - published_local).days, 0)
     if days_old <= 0:
-        return 2.0
+        return 2.35
     if days_old == 1:
-        return 1.6
+        return 1.9
     if days_old <= 3:
-        return 1.2
+        return 1.45
     if days_old <= 7:
-        return 0.95
+        return 1.05
     if days_old <= 14:
-        return 0.45
+        return 0.55
     if days_old <= 21:
-        return 0.05
+        return 0.15
     if days_old <= 30:
-        return -0.75
+        return -0.55
     if days_old <= 45:
-        return -1.8
-    return -2.8
+        return -1.55
+    return -2.6
 
 
 def _label_for_score(score: float) -> str:
-    if score >= 7.2:
+    if score >= 7.0:
         return "Strong Match"
-    if score >= 5.0:
+    if score >= 5.4:
         return "Promising"
     return "Background Read"
 
