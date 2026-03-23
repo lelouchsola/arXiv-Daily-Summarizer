@@ -23,8 +23,10 @@ def enrich_records_with_summaries(records: list[PaperRecord], settings: Settings
             api_key=settings.deepseek_api_key,
         )
 
+    summary_limit = max(settings.summary_count, settings.max_results_per_section * 3)
+
     for index, record in enumerate(records):
-        if index >= settings.summary_count:
+        if index >= summary_limit:
             _apply_fallback_summary(record)
             continue
 

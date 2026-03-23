@@ -72,24 +72,33 @@ def main() -> int:
     core_ieee_journals = {
         config.journal_title for config in settings.source_configs if config.group_key == "core_ieee"
     }
+    arxiv_candidates = [
+        record for record in records if record.source == "arxiv" and passes_rule_gate(record)
+    ]
     discovery_candidates = [
-        record for record in records if record.journal not in core_ieee_journals and passes_rule_gate(record)
+        record
+        for record in records
+        if record.source != "arxiv" and record.journal not in core_ieee_journals and passes_rule_gate(record)
     ]
     core_ieee_candidates = [
         record for record in records if record.journal in core_ieee_journals and passes_rule_gate(record)
     ]
 
     selected_candidates = (
-        discovery_candidates[: settings.max_results_per_section]
+        arxiv_candidates[: settings.max_results_per_section]
+        + discovery_candidates[: settings.max_results_per_section]
         + core_ieee_candidates[: settings.max_results_per_section]
-    )[: settings.max_results]
+    )
     enrich_records_with_summaries(selected_candidates, settings)
 
     llm_enabled = bool(settings.deepseek_api_key)
+    arxiv_selected = [
+        record for record in selected_candidates if record.source == "arxiv" and passes_display_gate(record, llm_enabled)
+    ]
     discovery_selected = [
         record
         for record in selected_candidates
-        if record.journal not in core_ieee_journals and passes_display_gate(record, llm_enabled)
+        if record.source != "arxiv" and record.journal not in core_ieee_journals and passes_display_gate(record, llm_enabled)
     ]
     core_ieee_selected = [
         record
@@ -97,12 +106,14 @@ def main() -> int:
         if record.journal in core_ieee_journals and passes_display_gate(record, llm_enabled)
     ]
 
+    arxiv_selected.sort(key=_sort_key, reverse=True)
     discovery_selected.sort(key=_sort_key, reverse=True)
     core_ieee_selected.sort(key=_sort_key, reverse=True)
     selected_records = (
-        discovery_selected[: settings.max_results_per_section]
+        arxiv_selected[: settings.max_results_per_section]
+        + discovery_selected[: settings.max_results_per_section]
         + core_ieee_selected[: settings.max_results_per_section]
-    )[: settings.max_results]
+    )
 
     site_dir = Path(__file__).resolve().parents[1] / "site"
     write_site_payload(

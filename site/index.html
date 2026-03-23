@@ -39,7 +39,7 @@
 
           <div class="hero__headline">
             <h1 id="site-title">每日论文精选推送</h1>
-            <p class="hero__headline-note">面向电力与能源系统研究的每日精选简报，分为跨来源发现榜与核心电力期刊榜两条阅读线。</p>
+            <p class="hero__headline-note">面向电力与能源系统研究的每日精选简报，分为 arXiv 精选榜、Nature / Joule 发现榜与核心电力期刊榜三条阅读线。</p>
           </div>
         </div>
       </header>
@@ -76,7 +76,7 @@
           <div class="section-header">
             <div>
               <p class="section-header__eyebrow">Curated Reading Queue</p>
-              <h2>近三天重点论文精选</h2>
+              <h2>近期重点论文精选</h2>
             </div>
             <p id="result-count" class="section-header__count">加载中...</p>
           </div>
@@ -85,7 +85,18 @@
           <section class="digest-section digest-section--primary">
             <div class="digest-section__header">
               <div>
-                <h3 id="discovery-title">跨来源发现榜</h3>
+                <h3 id="arxiv-title">arXiv 精选榜</h3>
+                <p id="arxiv-description" class="digest-section__description"></p>
+              </div>
+              <span id="arxiv-count" class="digest-section__count">0 篇</span>
+            </div>
+            <div id="arxiv-list" class="paper-grid"></div>
+          </section>
+
+          <section class="digest-section digest-section--primary">
+            <div class="digest-section__header">
+              <div>
+                <h3 id="discovery-title">Nature / Joule 发现榜</h3>
                 <p id="discovery-description" class="digest-section__description"></p>
               </div>
               <span id="discovery-count" class="digest-section__count">0 篇</span>
@@ -140,5 +151,3 @@
     <script src="./app.js" defer></script>
   </body>
 </html>
-
-

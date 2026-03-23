@@ -6,6 +6,33 @@
   payload: null,
 };
 
+const SECTION_CONFIGS = [
+  {
+    key: "arxiv",
+    titleId: "arxiv-title",
+    descriptionId: "arxiv-description",
+    countId: "arxiv-count",
+    listId: "arxiv-list",
+    emptyMessage: "当前筛选下没有 arXiv 论文。",
+  },
+  {
+    key: "discovery",
+    titleId: "discovery-title",
+    descriptionId: "discovery-description",
+    countId: "discovery-count",
+    listId: "discovery-list",
+    emptyMessage: "当前筛选下没有 Nature / Joule 发现榜论文。",
+  },
+  {
+    key: "core_ieee",
+    titleId: "core-title",
+    descriptionId: "core-description",
+    countId: "core-count",
+    listId: "core-list",
+    emptyMessage: "当前筛选下没有核心电力期刊论文。",
+  },
+];
+
 document.addEventListener("DOMContentLoaded", async () => {
   const sortSelect = document.getElementById("sort-select");
   sortSelect.addEventListener("change", (event) => {
@@ -111,19 +138,20 @@ function renderFrame() {
 
 function renderSections() {
   const sections = state.payload.sections;
-  const discovery = getVisiblePapers(sections.discovery.papers);
-  const core = getVisiblePapers(sections.core_ieee.papers);
+  let totalVisible = 0;
 
-  document.getElementById("result-count").textContent = `${discovery.length + core.length} 篇论文通过当前筛选`;
-  document.getElementById("discovery-title").textContent = sections.discovery.title;
-  document.getElementById("discovery-description").textContent = sections.discovery.description;
-  document.getElementById("discovery-count").textContent = `${discovery.length} 篇`;
-  document.getElementById("core-title").textContent = sections.core_ieee.title;
-  document.getElementById("core-description").textContent = sections.core_ieee.description;
-  document.getElementById("core-count").textContent = `${core.length} 篇`;
+  SECTION_CONFIGS.forEach((config) => {
+    const section = sections[config.key];
+    const visiblePapers = getVisiblePapers(section.papers);
+    totalVisible += visiblePapers.length;
 
-  renderPaperList(document.getElementById("discovery-list"), discovery, "当前筛选下没有跨来源发现榜论文。");
-  renderPaperList(document.getElementById("core-list"), core, "当前筛选下没有核心电力期刊论文。");
+    document.getElementById(config.titleId).textContent = section.title;
+    document.getElementById(config.descriptionId).textContent = section.description;
+    document.getElementById(config.countId).textContent = `${visiblePapers.length} 篇`;
+    renderPaperList(document.getElementById(config.listId), visiblePapers, config.emptyMessage);
+  });
+
+  document.getElementById("result-count").textContent = `${totalVisible} 篇论文通过当前筛选`;
 }
 
 function renderPaperList(container, papers, emptyMessage) {
@@ -253,16 +281,14 @@ function renderErrorState(error) {
   document.getElementById("updated-at").textContent = "数据加载失败";
   document.getElementById("result-count").textContent = "0 篇论文通过当前筛选";
 
-  const discoveryList = document.getElementById("discovery-list");
-  const coreList = document.getElementById("core-list");
-  discoveryList.innerHTML = "";
-  coreList.innerHTML = "";
-
-  const emptyState = document.createElement("div");
-  emptyState.className = "empty-state";
-  emptyState.textContent = `页面已经部署成功，但 latest.json 暂时无法读取：${error.message}`;
-  discoveryList.appendChild(emptyState.cloneNode(true));
-  coreList.appendChild(emptyState);
+  SECTION_CONFIGS.forEach((config) => {
+    const container = document.getElementById(config.listId);
+    container.innerHTML = "";
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state";
+    emptyState.textContent = `页面已经部署成功，但 latest.json 暂时无法读取：${error.message}`;
+    container.appendChild(emptyState);
+  });
 }
 
 function buildAgeLabel(paper) {

@@ -9,6 +9,8 @@ from .models import PaperRecord
 
 KEYWORD_GROUPS = {
     "电力系统优化": {
+        "ac optimal power flow": 2.5,
+        "ac opf": 2.1,
         "optimal power flow": 2.1,
         "opf": 1.2,
         "unit commitment": 1.9,
@@ -118,6 +120,10 @@ DOMAIN_GROUPS = {
 METHOD_GROUPS = {"AI+Optimization"}
 
 BROAD_RELEVANCE_KEYWORDS = {
+    "ac optimal power flow",
+    "ac opf",
+    "ac optimal power flow",
+    "ac opf",
     "optimal power flow",
     "opf",
     "unit commitment",
@@ -329,9 +335,9 @@ def passes_display_gate(record: PaperRecord, llm_enabled: bool) -> bool:
         return False
 
     if llm_enabled:
-        return record.final_score >= 4.2 or record.relevance_label != "Background Read"
+        return record.final_score >= 6.0
 
-    return record.rule_score >= 4.0
+    return record.rule_score >= 6.0
 
 
 def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywords: list[str]) -> float:
