@@ -2,7 +2,7 @@ name: Build Daily Paper Site
 
 on:
   schedule:
-    - cron: "30 0 * * *"
+    - cron: "17 1 * * *"
   workflow_dispatch:
 
 jobs:
