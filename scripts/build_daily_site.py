@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +37,9 @@ def main() -> int:
                 timezone_name=settings.timezone_name,
                 max_results_per_category=settings.max_results_per_arxiv_category,
                 lookback_days=settings.lookback_days,
+                page_size=settings.arxiv_page_size,
+                delay_seconds=settings.arxiv_delay_seconds,
+                num_retries=settings.arxiv_num_retries,
             )
             print(f"Collected {len(arxiv_records)} arXiv papers.")
             records.extend(arxiv_records)

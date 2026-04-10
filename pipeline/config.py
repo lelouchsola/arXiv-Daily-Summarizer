@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
@@ -24,6 +24,9 @@ class Settings:
     max_results_per_section: int = 10
     arxiv_categories: tuple[str, ...] = ("math.OC", "eess.SY")
     max_results_per_arxiv_category: int = 200
+    arxiv_page_size: int = 50
+    arxiv_delay_seconds: float = 8.0
+    arxiv_num_retries: int = 6
     crossref_latest_rows: int = 50
     crossref_max_age_days: int = 60
     summary_count: int = 20
@@ -49,6 +52,9 @@ def load_settings() -> Settings:
     max_results_per_section = int(os.environ.get("MAX_RESULTS_PER_SECTION", "10"))
     crossref_latest_rows = int(os.environ.get("CROSSREF_LATEST_ROWS", "50"))
     crossref_max_age_days = int(os.environ.get("CROSSREF_MAX_AGE_DAYS", "60"))
+    arxiv_page_size = int(os.environ.get("ARXIV_PAGE_SIZE", "50"))
+    arxiv_delay_seconds = float(os.environ.get("ARXIV_DELAY_SECONDS", "8.0"))
+    arxiv_num_retries = int(os.environ.get("ARXIV_NUM_RETRIES", "6"))
     summary_count = int(os.environ.get("SUMMARY_COUNT", str(max_results)))
     lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
     arxiv_categories = tuple(
@@ -180,6 +186,9 @@ def load_settings() -> Settings:
         max_results_per_section=max_results_per_section,
         arxiv_categories=arxiv_categories,
         max_results_per_arxiv_category=max_results * 10,
+        arxiv_page_size=arxiv_page_size,
+        arxiv_delay_seconds=arxiv_delay_seconds,
+        arxiv_num_retries=arxiv_num_retries,
         crossref_latest_rows=crossref_latest_rows,
         crossref_max_age_days=crossref_max_age_days,
         summary_count=summary_count,
