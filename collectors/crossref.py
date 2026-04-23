@@ -13,8 +13,8 @@ from pipeline.models import PaperRecord
 
 CROSSREF_WORKS_API_URL = "https://api.crossref.org/works"
 USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Summarizer)"
-IEEE_SOURCE_KEY = "ieee"
-IEEE_SORT_FIELDS = ("created", "deposited", "indexed", "published-online", "published")
+CORE_POWER_GROUP_KEY = "core_ieee"
+CORE_POWER_SORT_FIELDS = ("created", "deposited", "published-online", "published")
 DEFAULT_SORT_FIELDS = ("published-online", "published", "created")
 NON_RESEARCH_TITLE_PATTERNS = (
     "table of contents",
@@ -47,7 +47,7 @@ def collect_crossref_journal_papers(
     earliest_allowed_date = target_date - timedelta(days=max(max_age_days - 1, 0))
     records: list[PaperRecord] = []
     seen_ids: set[str] = set()
-    sort_fields = _sort_fields_for_source(config.source_key)
+    sort_fields = _sort_fields_for_config(config)
 
     for issn in config.issns:
         items = _fetch_crossref_items(session, issn, latest_rows, timeout_seconds, sort_fields)
@@ -65,9 +65,9 @@ def collect_crossref_journal_papers(
     return records
 
 
-def _sort_fields_for_source(source_key: str) -> tuple[str, ...]:
-    if source_key == IEEE_SOURCE_KEY:
-        return IEEE_SORT_FIELDS
+def _sort_fields_for_config(config: JournalSourceConfig) -> tuple[str, ...]:
+    if config.group_key == CORE_POWER_GROUP_KEY:
+        return CORE_POWER_SORT_FIELDS
     return DEFAULT_SORT_FIELDS
 
 
@@ -183,8 +183,8 @@ def _is_non_research_title(title: str) -> bool:
 
 
 def _extract_best_date(item: dict, config: JournalSourceConfig) -> datetime | None:
-    if config.source_key == IEEE_SOURCE_KEY:
-        fields = ("published-online", "created", "deposited", "indexed", "published-print", "issued")
+    if config.group_key == CORE_POWER_GROUP_KEY:
+        fields = ("published-online", "created", "deposited", "published-print", "issued", "indexed")
     else:
         fields = ("published-online", "published-print", "issued", "created", "deposited", "indexed")
 
