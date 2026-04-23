@@ -67,17 +67,9 @@ function renderFrame() {
     rssLink.href = meta.feed_url || "./feed.xml";
   }
 
-  const emailSubscribeLink = document.getElementById("email-subscribe-link");
   const subscriptionNote = document.getElementById("subscription-note");
-  if (emailSubscribeLink && subscriptionNote) {
-    if (meta.subscribe_url) {
-      emailSubscribeLink.href = meta.subscribe_url;
-      emailSubscribeLink.hidden = false;
-      subscriptionNote.textContent = "You can subscribe by email directly, or add this RSS feed to your reader or an RSS-to-email service.";
-    } else {
-      emailSubscribeLink.hidden = true;
-      subscriptionNote.textContent = "Add this RSS feed to Feedly, Inoreader, or any RSS reader to follow daily updates.";
-    }
+  if (subscriptionNote) {
+    subscriptionNote.textContent = "Add this RSS feed to Feedly, Inoreader, or any RSS reader to follow daily updates.";
   }
 
   const statsGrid = document.getElementById("stats-grid");

@@ -84,9 +84,16 @@ body {
   justify-items: start;
   padding: 10px 0 10px 8px;
 }
+.hero__headline-top {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
 .eyebrow, .section-header__eyebrow, .control-label, .paper-card__source, .paper-card__journal,
 .meta-pill, .stat-card__label, .text-link, .score-badge, .label-badge, .section-header__count,
-.digest-section__count, .keywords-label, .keyword-chip, .hero__labline, .hero__pi-link {
+.digest-section__count, .keywords-label, .keyword-chip, .hero__labline, .hero__pi-link, .hero__feedback-link {
   font-family: var(--font-ui);
 }
 .eyebrow, .section-header__eyebrow {
@@ -136,6 +143,10 @@ body {
   max-width: 10ch;
   letter-spacing: -0.03em;
   text-wrap: balance;
+}
+.hero__feedback-link {
+  flex-shrink: 0;
+  margin-top: 8px;
 }
 .hero__headline-note {
   margin: 0;
@@ -441,6 +452,10 @@ body {
   .hero, .overview, .content-section, .digest-section { padding: 22px; }
   .paper-card { padding: 18px; }
   .digest-section__header { flex-direction: column; }
+  .hero__headline-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
   .hero h1 {
     font-size: 1.8rem;
     max-width: none;
