@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import datetime
 import re
@@ -23,14 +23,27 @@ KEYWORD_GROUPS = {
         "stochastic optimization": 1.7,
         "robust optimization": 1.7,
         "power system": 1.3,
+        "power systems": 1.3,
         "smart grid": 1.4,
         "microgrid": 1.3,
+        "microgrids": 1.3,
         "demand response": 1.4,
         "energy storage": 1.3,
         "distributed energy resource": 1.2,
+        "distributed energy resources": 1.2,
         "der": 1.0,
         "virtual power plant": 1.3,
         "flexibility": 0.8,
+        "chance-constrained optimization": 1.6,
+        "chance-constrained": 1.2,
+        "frequency-constrained": 1.4,
+        "frequency nadir": 1.4,
+        "voltage security": 1.4,
+        "market clearing": 1.4,
+        "energy trading": 1.3,
+        "peer-to-peer energy trading": 1.7,
+        "p2p energy trading": 1.7,
+        "peer-to-peer transaction": 1.1,
     },
     "AI+Optimization": {
         "learn to optimize": 2.0,
@@ -141,6 +154,19 @@ BROAD_RELEVANCE_KEYWORDS = {
     "demand response",
     "energy storage",
     "distributed energy resource",
+    "power systems",
+    "microgrids",
+    "distributed energy resources",
+    "chance-constrained optimization",
+    "chance-constrained",
+    "frequency-constrained",
+    "frequency nadir",
+    "voltage security",
+    "market clearing",
+    "energy trading",
+    "peer-to-peer energy trading",
+    "p2p energy trading",
+    "peer-to-peer transaction",
     "virtual power plant",
     "load forecasting",
     "net load forecasting",
@@ -210,6 +236,19 @@ POWER_SYSTEM_SIGNAL_KEYWORDS = {
     "energy storage",
     "distributed energy resource",
     "der",
+    "power systems",
+    "microgrids",
+    "distributed energy resources",
+    "chance-constrained optimization",
+    "chance-constrained",
+    "frequency-constrained",
+    "frequency nadir",
+    "voltage security",
+    "market clearing",
+    "energy trading",
+    "peer-to-peer energy trading",
+    "p2p energy trading",
+    "peer-to-peer transaction",
     "virtual power plant",
     "load forecasting",
     "net load forecasting",
@@ -461,6 +500,7 @@ def _journal_priority(record: PaperRecord) -> float:
 
 def _metadata_quality_bonus(record: PaperRecord) -> float:
     score = 0.0
+    journal_lower = record.journal.lower()
     abstract_length = len(record.abstract_raw)
     if abstract_length > 1400:
         score += 0.85
@@ -468,7 +508,7 @@ def _metadata_quality_bonus(record: PaperRecord) -> float:
         score += 0.6
     elif abstract_length > 350:
         score += 0.3
-    elif abstract_length < 120:
+    elif abstract_length < 120 and journal_lower not in CORE_POWER_JOURNALS:
         score -= 0.7
 
     author_count = len(record.authors)

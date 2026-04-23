@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import html
 import re
@@ -13,6 +13,19 @@ from pipeline.models import PaperRecord
 
 CROSSREF_WORKS_API_URL = "https://api.crossref.org/works"
 USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Summarizer)"
+IEEE_SOURCE_KEY = "ieee"
+IEEE_SORT_FIELDS = ("created", "deposited", "indexed", "published-online", "published")
+DEFAULT_SORT_FIELDS = ("published-online", "published", "created")
+NON_RESEARCH_TITLE_PATTERNS = (
+    "table of contents",
+    "blank page",
+    "front cover",
+    "back cover",
+    "publication information",
+    "information for authors",
+    "masthead",
+    "editorial board",
+)
 
 
 def collect_crossref_journal_papers(
@@ -34,9 +47,10 @@ def collect_crossref_journal_papers(
     earliest_allowed_date = target_date - timedelta(days=max(max_age_days - 1, 0))
     records: list[PaperRecord] = []
     seen_ids: set[str] = set()
+    sort_fields = _sort_fields_for_source(config.source_key)
 
     for issn in config.issns:
-        items = _fetch_crossref_items(session, issn, latest_rows, timeout_seconds)
+        items = _fetch_crossref_items(session, issn, latest_rows, timeout_seconds, sort_fields)
         for item in items:
             record = _item_to_record(item, config)
             if not record or record.id in seen_ids:
@@ -51,11 +65,18 @@ def collect_crossref_journal_papers(
     return records
 
 
+def _sort_fields_for_source(source_key: str) -> tuple[str, ...]:
+    if source_key == IEEE_SOURCE_KEY:
+        return IEEE_SORT_FIELDS
+    return DEFAULT_SORT_FIELDS
+
+
 def _fetch_crossref_items(
     session: requests.Session,
     issn: str,
     latest_rows: int,
     timeout_seconds: int,
+    sort_fields: tuple[str, ...],
 ) -> list[dict]:
     select_fields = ",".join(
         [
@@ -67,44 +88,56 @@ def _fetch_crossref_items(
             "container-title",
             "link",
             "subject",
+            "type",
             "published-online",
             "published-print",
             "issued",
             "created",
+            "deposited",
+            "indexed",
             "publisher",
         ]
     )
 
-    query_variants = [
-        {"filter": f"issn:{issn}", "sort": "published", "order": "desc"},
-        {"filter": f"issn:{issn}", "sort": "created", "order": "desc"},
-    ]
+    items: list[dict] = []
+    seen_item_ids: set[str] = set()
 
-    for variant in query_variants:
+    for sort_field in sort_fields:
         response = session.get(
             CROSSREF_WORKS_API_URL,
             params={
-                **variant,
+                "filter": f"issn:{issn}",
+                "sort": sort_field,
+                "order": "desc",
                 "rows": latest_rows,
                 "select": select_fields,
             },
             timeout=timeout_seconds,
         )
         response.raise_for_status()
-        items = response.json().get("message", {}).get("items", [])
-        if items:
-            return items
+        for item in response.json().get("message", {}).get("items", []):
+            identifier = _item_identifier(item)
+            if identifier in seen_item_ids:
+                continue
+            seen_item_ids.add(identifier)
+            items.append(item)
 
-    return []
+    return items
+
+
+def _item_identifier(item: dict) -> str:
+    title_values = item.get("title") or []
+    title = title_values[0].strip() if title_values else ""
+    return item.get("DOI") or item.get("URL") or title
 
 
 def _item_to_record(item: dict, config: JournalSourceConfig) -> PaperRecord | None:
     title_values = item.get("title") or []
     title = title_values[0].strip() if title_values else ""
-    if not title:
+    if not title or _is_non_research_title(title):
         return None
 
-    published_at = _extract_best_date(item)
+    published_at = _extract_best_date(item, config)
     if published_at is None:
         return None
 
@@ -139,12 +172,23 @@ def _item_to_record(item: dict, config: JournalSourceConfig) -> PaperRecord | No
             "publisher": item.get("publisher"),
             "issns": list(config.issns),
             "journal_weight": config.journal_weight,
+            "crossref_type": item.get("type"),
         },
     )
 
 
-def _extract_best_date(item: dict) -> datetime | None:
-    for field in ("published-online", "published-print", "issued", "created"):
+def _is_non_research_title(title: str) -> bool:
+    normalized = re.sub(r"\s+", " ", title).strip().lower()
+    return any(pattern in normalized for pattern in NON_RESEARCH_TITLE_PATTERNS)
+
+
+def _extract_best_date(item: dict, config: JournalSourceConfig) -> datetime | None:
+    if config.source_key == IEEE_SOURCE_KEY:
+        fields = ("published-online", "created", "deposited", "indexed", "published-print", "issued")
+    else:
+        fields = ("published-online", "published-print", "issued", "created", "deposited", "indexed")
+
+    for field in fields:
         value = item.get(field)
         parsed = _parse_crossref_date(value)
         if parsed is not None:
