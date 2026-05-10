@@ -109,6 +109,20 @@ KEYWORD_GROUPS = {
         "typhoon": 1.1,
         "extreme weather": 1.3,
     },
+    "稳定性": {
+        "transient stability": 1.8,
+        "transient-stability": 1.8,
+        "large signal stability": 1.7,
+        "large-signal stability": 1.7,
+    },
+    "构网型": {
+        "grid forming": 1.8,
+        "grid-forming": 1.8,
+        "grid following": 1.6,
+        "grid-following": 1.6,
+        "current limiting": 1.2,
+        "current-limiting": 1.2,
+    },
 }
 
 CORE_KEYWORDS = {
@@ -129,6 +143,8 @@ DOMAIN_GROUPS = {
     "氢电互动",
     "车网互动",
     "电网韧性",
+    "稳定性",
+    "构网型",
 }
 METHOD_GROUPS = {"AI+Optimization"}
 
@@ -204,6 +220,14 @@ BROAD_RELEVANCE_KEYWORDS = {
     "disaster response",
     "typhoon",
     "extreme weather",
+    "transient stability",
+    "transient-stability",
+    "large signal stability",
+    "large-signal stability",
+    "grid forming",
+    "grid-forming",
+    "grid following",
+    "grid-following",
     "learn to optimize",
     "learning to optimize",
     "decision-focused",
@@ -270,6 +294,14 @@ POWER_SYSTEM_SIGNAL_KEYWORDS = {
     "service restoration",
     "network reconfiguration",
     "black start",
+    "transient stability",
+    "transient-stability",
+    "large signal stability",
+    "large-signal stability",
+    "grid forming",
+    "grid-forming",
+    "grid following",
+    "grid-following",
 }
 
 POWER_CONTEXT_TERMS = {
@@ -292,6 +324,14 @@ POWER_CONTEXT_TERMS = {
     "energy system",
     "renewable generation",
     "renewable energy",
+    "transient stability",
+    "transient-stability",
+    "large signal stability",
+    "large-signal stability",
+    "grid forming",
+    "grid-forming",
+    "grid following",
+    "grid-following",
 }
 
 MATERIAL_RISK_TERMS = {
@@ -349,6 +389,8 @@ DISCOVERY_REQUIRED_GROUPS = {
     "\u6e90\u8377\u9884\u6d4b",
     "\u8f66\u7f51\u4e92\u52a8",
     "\u7535\u7f51\u97e7\u6027",
+    "\u7a33\u5b9a\u6027",
+    "\u6784\u7f51\u578b",
 }
 
 
