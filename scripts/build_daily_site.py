@@ -40,6 +40,7 @@ def main() -> int:
                 page_size=settings.arxiv_page_size,
                 delay_seconds=settings.arxiv_delay_seconds,
                 num_retries=settings.arxiv_num_retries,
+                contact_email=settings.crossref_mailto,
             )
             print(f"Collected {len(arxiv_records)} arXiv papers.")
             records.extend(arxiv_records)
