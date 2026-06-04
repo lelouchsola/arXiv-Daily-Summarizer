@@ -24,9 +24,9 @@ class Settings:
     max_results_per_section: int = 10
     arxiv_categories: tuple[str, ...] = ("math.OC", "eess.SY")
     max_results_per_arxiv_category: int = 200
-    arxiv_page_size: int = 50
-    arxiv_delay_seconds: float = 8.0
-    arxiv_num_retries: int = 6
+    arxiv_page_size: int = 25
+    arxiv_delay_seconds: float = 6.0
+    arxiv_num_retries: int = 1
     crossref_latest_rows: int = 50
     crossref_max_age_days: int = 60
     summary_count: int = 20
@@ -52,9 +52,9 @@ def load_settings() -> Settings:
     max_results_per_section = int(os.environ.get("MAX_RESULTS_PER_SECTION", "10"))
     crossref_latest_rows = int(os.environ.get("CROSSREF_LATEST_ROWS", "50"))
     crossref_max_age_days = int(os.environ.get("CROSSREF_MAX_AGE_DAYS", "60"))
-    arxiv_page_size = int(os.environ.get("ARXIV_PAGE_SIZE", "50"))
-    arxiv_delay_seconds = float(os.environ.get("ARXIV_DELAY_SECONDS", "8.0"))
-    arxiv_num_retries = int(os.environ.get("ARXIV_NUM_RETRIES", "6"))
+    arxiv_page_size = int(os.environ.get("ARXIV_PAGE_SIZE", "25"))
+    arxiv_delay_seconds = float(os.environ.get("ARXIV_DELAY_SECONDS", "6.0"))
+    arxiv_num_retries = int(os.environ.get("ARXIV_NUM_RETRIES", "1"))
     summary_count = int(os.environ.get("SUMMARY_COUNT", str(max_results)))
     lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
     arxiv_categories = tuple(

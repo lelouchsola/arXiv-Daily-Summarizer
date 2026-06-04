@@ -14,12 +14,12 @@ import requests
 
 from pipeline.models import PaperRecord
 
-ARXIV_EXTRA_BACKOFF_SECONDS = (60.0, 180.0, 420.0)
+ARXIV_EXTRA_BACKOFF_SECONDS = (10.0,)
 ARXIV_MAX_PAGE_SIZE = 25
-ARXIV_MIN_DELAY_SECONDS = 12.0
-ARXIV_MIN_NUM_RETRIES = 8
-ARXIV_GITHUB_ACTIONS_JITTER_SECONDS = 45.0
-ARXIV_CATEGORY_PAUSE_SECONDS = 12.0
+ARXIV_MIN_DELAY_SECONDS = 6.0
+ARXIV_MAX_NUM_RETRIES = 1
+ARXIV_GITHUB_ACTIONS_JITTER_SECONDS = 8.0
+ARXIV_CATEGORY_PAUSE_SECONDS = 3.0
 ARXIV_USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Summarizer)"
 ARXIV_RECENT_LIST_URL_FORMAT = "https://arxiv.org/list/{category}/recent?skip=0&show=2000"
 ARXIV_FALLBACK_TIMEOUT_SECONDS = 30
@@ -40,7 +40,7 @@ def collect_arxiv_papers(
     min_date = target_date - timedelta(days=max(lookback_days - 1, 0))
     effective_page_size = max(1, min(page_size, ARXIV_MAX_PAGE_SIZE))
     effective_delay_seconds = max(delay_seconds, ARXIV_MIN_DELAY_SECONDS)
-    effective_num_retries = max(num_retries, ARXIV_MIN_NUM_RETRIES)
+    effective_num_retries = max(0, min(num_retries, ARXIV_MAX_NUM_RETRIES))
     client = arxiv.Client(
         page_size=effective_page_size,
         delay_seconds=effective_delay_seconds,
@@ -275,7 +275,9 @@ def _results_with_backoff(client: arxiv.Client, search: arxiv.Search):
         try:
             yield from client.results(search)
             return
-        except Exception:
+        except Exception as exc:
+            if _should_use_recent_page_fallback(exc):
+                raise
             if attempt >= len(ARXIV_EXTRA_BACKOFF_SECONDS):
                 raise
             time.sleep(ARXIV_EXTRA_BACKOFF_SECONDS[attempt])
