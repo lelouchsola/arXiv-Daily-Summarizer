@@ -543,6 +543,7 @@ def _journal_priority(record: PaperRecord) -> float:
 def _metadata_quality_bonus(record: PaperRecord) -> float:
     score = 0.0
     journal_lower = record.journal.lower()
+    fallback_source = record.metadata.get("fallback_source")
     abstract_length = len(record.abstract_raw)
     if abstract_length > 1400:
         score += 0.85
@@ -550,7 +551,11 @@ def _metadata_quality_bonus(record: PaperRecord) -> float:
         score += 0.6
     elif abstract_length > 350:
         score += 0.3
-    elif abstract_length < 120 and journal_lower not in CORE_POWER_JOURNALS:
+    elif (
+        abstract_length < 120
+        and journal_lower not in CORE_POWER_JOURNALS
+        and fallback_source != "arxiv_recent_page"
+    ):
         score -= 0.7
 
     author_count = len(record.authors)
