@@ -110,18 +110,18 @@ KEYWORD_GROUPS = {
         "extreme weather": 1.3,
     },
     "稳定性": {
-        "transient stability": 1.8,
-        "transient-stability": 1.8,
-        "large signal stability": 1.7,
-        "large-signal stability": 1.7,
+        "transient stability": 1.0,
+        "transient-stability": 1.0,
+        "large signal stability": 0.9,
+        "large-signal stability": 0.9,
     },
     "构网型": {
-        "grid forming": 1.8,
-        "grid-forming": 1.8,
-        "grid following": 1.6,
-        "grid-following": 1.6,
-        "current limiting": 1.2,
-        "current-limiting": 1.2,
+        "grid forming": 0.95,
+        "grid-forming": 0.95,
+        "grid following": 0.75,
+        "grid-following": 0.75,
+        "current limiting": 0.45,
+        "current-limiting": 0.45,
     },
 }
 
@@ -147,6 +147,14 @@ DOMAIN_GROUPS = {
     "构网型",
 }
 METHOD_GROUPS = {"AI+Optimization"}
+STABILITY_PRIORITY_GROUPS = {"稳定性", "构网型"}
+OPTIMIZATION_PRIORITY_GROUPS = {
+    "电力系统优化",
+    "AI+Optimization",
+    "源荷预测",
+    "氢电互动",
+    "车网互动",
+}
 
 BROAD_RELEVANCE_KEYWORDS = {
     "ac optimal power flow",
@@ -457,6 +465,7 @@ def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywo
         score += 0.22
 
     score -= _material_risk_penalty(record)
+    score -= _stability_priority_penalty(record)
 
     if record.source == "arxiv":
         primary_category = (record.metadata.get("primary_category") or "").lower()
@@ -531,6 +540,20 @@ def _material_risk_penalty(record: PaperRecord) -> float:
     if broad_hits == 1:
         return 1.7
     return 0.6
+
+
+def _stability_priority_penalty(record: PaperRecord) -> float:
+    matched_groups = set(record.matched_keyword_groups)
+    if not matched_groups or not (matched_groups & STABILITY_PRIORITY_GROUPS):
+        return 0.0
+
+    if matched_groups & OPTIMIZATION_PRIORITY_GROUPS:
+        return 0.0
+
+    if matched_groups <= STABILITY_PRIORITY_GROUPS:
+        return 1.15
+
+    return 0.45
 
 
 def _journal_priority(record: PaperRecord) -> float:
