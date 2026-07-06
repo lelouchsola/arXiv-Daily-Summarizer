@@ -5,24 +5,32 @@ import os
 import random
 import re
 import time
-from urllib.parse import urljoin
+from urllib.parse import urlencode, urljoin
+import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 
-import arxiv
 from bs4 import BeautifulSoup
 import requests
 
 from pipeline.models import PaperRecord
 
-ARXIV_EXTRA_BACKOFF_SECONDS = (10.0,)
 ARXIV_MAX_PAGE_SIZE = 25
 ARXIV_MIN_DELAY_SECONDS = 6.0
 ARXIV_MAX_NUM_RETRIES = 1
 ARXIV_GITHUB_ACTIONS_JITTER_SECONDS = 8.0
 ARXIV_CATEGORY_PAUSE_SECONDS = 3.0
+ARXIV_REQUEST_RETRY_BACKOFF_SECONDS = 2.0
 ARXIV_USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Summarizer)"
+ARXIV_ACCEPT_HEADER = "application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
+ARXIV_API_TIMEOUT_SECONDS = 30
 ARXIV_RECENT_LIST_URL_FORMAT = "https://arxiv.org/list/{category}/recent?skip=0&show=2000"
 ARXIV_FALLBACK_TIMEOUT_SECONDS = 30
+
+ATOM_NAMESPACE = {
+    "atom": "http://www.w3.org/2005/Atom",
+    "arxiv": "http://arxiv.org/schemas/atom",
+}
 
 
 def collect_arxiv_papers(
@@ -41,12 +49,12 @@ def collect_arxiv_papers(
     effective_page_size = max(1, min(page_size, ARXIV_MAX_PAGE_SIZE))
     effective_delay_seconds = max(delay_seconds, ARXIV_MIN_DELAY_SECONDS)
     effective_num_retries = max(0, min(num_retries, ARXIV_MAX_NUM_RETRIES))
-    client = arxiv.Client(
+    api_client = _ArxivApiClient(
+        session=_build_session(contact_email),
         page_size=effective_page_size,
         delay_seconds=effective_delay_seconds,
         num_retries=effective_num_retries,
     )
-    _configure_client(client, contact_email)
 
     papers: list[PaperRecord] = []
     seen_ids: set[str] = set()
@@ -58,7 +66,7 @@ def collect_arxiv_papers(
     for index, category in enumerate(categories):
         try:
             api_records = _collect_api_category(
-                client=client,
+                api_client=api_client,
                 category=category,
                 target_date=target_date,
                 min_date=min_date,
@@ -70,17 +78,17 @@ def collect_arxiv_papers(
             if _should_use_recent_page_fallback(exc):
                 try:
                     fallback_records = _collect_recent_page_category(
+                        session=api_client.session,
                         category=category,
                         target_date=target_date,
                         min_date=min_date,
                         max_results_per_category=max_results_per_category,
-                        contact_email=contact_email,
                     )
                     if fallback_records:
                         _append_unique_records(papers, seen_ids, fallback_records)
                         print(
-                            f"Using arXiv recent-page fallback for {category}: "
-                            f"collected {len(fallback_records)} papers."
+                            f"arXiv API unavailable for {category} ({exc}); "
+                            f"using recent-page fallback collected {len(fallback_records)} papers."
                         )
                     else:
                         category_errors.append(
@@ -102,66 +110,107 @@ def collect_arxiv_papers(
     return papers
 
 
+class _ArxivApiClient:
+    def __init__(
+        self,
+        session: requests.Session,
+        page_size: int,
+        delay_seconds: float,
+        num_retries: int,
+    ) -> None:
+        self.session = session
+        self.page_size = page_size
+        self.delay_seconds = delay_seconds
+        self.num_retries = num_retries
+        self._last_request_monotonic: float | None = None
+
+    def query(self, category: str, start: int, max_results: int) -> ET.Element:
+        params = {
+            "search_query": f"cat:{category}",
+            "id_list": "",
+            "sortBy": "submittedDate",
+            "sortOrder": "descending",
+            "start": start,
+            "max_results": max_results,
+        }
+        url = f"{ARXIV_API_URL}?{urlencode(params)}"
+
+        for attempt in range(self.num_retries + 1):
+            self._sleep_if_needed()
+            try:
+                response = self.session.get(url, timeout=ARXIV_API_TIMEOUT_SECONDS)
+                response.raise_for_status()
+                if not response.content.strip():
+                    raise RuntimeError(f"empty arXiv API response for {category}")
+                return ET.fromstring(response.content)
+            except Exception as exc:
+                if _should_use_recent_page_fallback(exc) or attempt >= self.num_retries:
+                    raise
+                time.sleep(ARXIV_REQUEST_RETRY_BACKOFF_SECONDS)
+            finally:
+                self._last_request_monotonic = time.monotonic()
+
+        raise RuntimeError(f"failed to query arXiv API for {category}")
+
+    def _sleep_if_needed(self) -> None:
+        if self._last_request_monotonic is None:
+            return
+
+        elapsed = time.monotonic() - self._last_request_monotonic
+        if elapsed < self.delay_seconds:
+            time.sleep(self.delay_seconds - elapsed)
+
+
 def _collect_api_category(
-    client: arxiv.Client,
+    api_client: _ArxivApiClient,
     category: str,
     target_date: date,
     min_date: date,
     timezone_local: ZoneInfo,
     max_results_per_category: int,
 ) -> list[PaperRecord]:
-    search = arxiv.Search(
-        query=f"cat:{category}",
-        max_results=max_results_per_category,
-        sort_by=arxiv.SortCriterion.SubmittedDate,
-        sort_order=arxiv.SortOrder.Descending,
-    )
-
     records: list[PaperRecord] = []
-    for result in _results_with_backoff(client, search):
-        published_local = result.published.astimezone(timezone_local)
-        published_date = published_local.date()
-        if published_date < min_date:
-            break
-        if published_date > target_date:
-            continue
+    start = 0
 
-        records.append(
-            PaperRecord(
-                id=result.entry_id,
-                source="arxiv",
-                journal="arXiv",
-                title=result.title.strip(),
-                authors=[author.name for author in result.authors],
-                abstract_raw=(result.summary or "").strip(),
-                url=result.entry_id,
-                pdf_url=result.pdf_url,
-                doi=None,
-                published_at=result.published,
-                categories=result.categories or [category],
-                metadata={
-                    "primary_category": category,
-                },
-            )
-        )
+    while len(records) < max_results_per_category:
+        batch_size = min(api_client.page_size, max_results_per_category - len(records))
+        feed_root = api_client.query(category=category, start=start, max_results=batch_size)
+        entries = feed_root.findall("atom:entry", ATOM_NAMESPACE)
+        if not entries:
+            break
+
+        stop_paging = False
+        for entry in entries:
+            record = _api_entry_to_record(entry, category)
+            if record is None:
+                continue
+
+            published_local = record.published_at.astimezone(timezone_local)
+            published_date = published_local.date()
+            if published_date < min_date:
+                stop_paging = True
+                break
+            if published_date > target_date:
+                continue
+
+            records.append(record)
+            if len(records) >= max_results_per_category:
+                return records
+
+        if stop_paging or len(entries) < batch_size:
+            break
+        start += batch_size
 
     return records
 
 
 def _collect_recent_page_category(
+    session: requests.Session,
     category: str,
     target_date: date,
     min_date: date,
     max_results_per_category: int,
-    contact_email: str | None = None,
 ) -> list[PaperRecord]:
-    session = requests.Session()
-    headers = {"User-Agent": ARXIV_USER_AGENT}
-    if contact_email:
-        headers["User-Agent"] = f"{ARXIV_USER_AGENT} mailto:{contact_email}"
-        headers["From"] = contact_email
-    session.headers.update(headers)
-
     response = session.get(
         ARXIV_RECENT_LIST_URL_FORMAT.format(category=category),
         timeout=ARXIV_FALLBACK_TIMEOUT_SECONDS,
@@ -191,6 +240,47 @@ def _collect_recent_page_category(
                 return records
 
     return records
+
+
+def _api_entry_to_record(entry: ET.Element, category: str) -> PaperRecord | None:
+    entry_id = _normalize_space(_find_entry_text(entry, "atom:id"))
+    title = _normalize_space(_find_entry_text(entry, "atom:title"))
+    published_text = _normalize_space(_find_entry_text(entry, "atom:published"))
+    if not entry_id or not title or not published_text:
+        return None
+
+    authors = [
+        author_name
+        for author_name in (
+            _normalize_space(author_node.text)
+            for author_node in entry.findall("atom:author/atom:name", ATOM_NAMESPACE)
+        )
+        if author_name
+    ]
+    abstract_raw = _normalize_space(_find_entry_text(entry, "atom:summary"))
+    categories = _extract_api_categories(entry)
+    pdf_url = _extract_pdf_url(entry)
+    primary_category_node = entry.find("arxiv:primary_category", ATOM_NAMESPACE)
+    primary_category = category
+    if primary_category_node is not None and primary_category_node.get("term"):
+        primary_category = primary_category_node.get("term", "").strip() or category
+
+    return PaperRecord(
+        id=entry_id,
+        source="arxiv",
+        journal="arXiv",
+        title=title,
+        authors=authors,
+        abstract_raw=abstract_raw,
+        url=entry_id,
+        pdf_url=pdf_url,
+        doi=_normalize_space(_find_entry_text(entry, "arxiv:doi")) or None,
+        published_at=_parse_api_datetime(published_text),
+        categories=categories or [primary_category],
+        metadata={
+            "primary_category": primary_category,
+        },
+    )
 
 
 def _recent_pair_to_record(dt_node, dd_node, category: str, section_date: date) -> PaperRecord | None:
@@ -234,6 +324,59 @@ def _recent_pair_to_record(dt_node, dd_node, category: str, section_date: date) 
     )
 
 
+def _build_session(contact_email: str | None) -> requests.Session:
+    session = requests.Session()
+    user_agent = ARXIV_USER_AGENT
+    headers = {
+        "User-Agent": user_agent,
+        "Accept": ARXIV_ACCEPT_HEADER,
+    }
+    if contact_email:
+        headers["User-Agent"] = f"{user_agent} mailto:{contact_email}"
+        headers["From"] = contact_email
+    session.headers.update(headers)
+    return session
+
+
+def _find_entry_text(entry: ET.Element, path: str) -> str:
+    node = entry.find(path, ATOM_NAMESPACE)
+    if node is None or node.text is None:
+        return ""
+    return node.text
+
+
+def _extract_api_categories(entry: ET.Element) -> list[str]:
+    categories: list[str] = []
+    seen: set[str] = set()
+    for category_node in entry.findall("atom:category", ATOM_NAMESPACE):
+        term = (category_node.get("term") or "").strip()
+        if not term or term in seen:
+            continue
+        seen.add(term)
+        categories.append(term)
+    return categories
+
+
+def _extract_pdf_url(entry: ET.Element) -> str | None:
+    for link_node in entry.findall("atom:link", ATOM_NAMESPACE):
+        href = (link_node.get("href") or "").strip()
+        if not href:
+            continue
+        link_title = (link_node.get("title") or "").strip().lower()
+        link_type = (link_node.get("type") or "").strip().lower()
+        if link_title == "pdf" or link_type == "application/pdf" or "/pdf/" in href:
+            return href
+    return None
+
+
+def _parse_api_datetime(value: str) -> datetime:
+    normalized = value.strip().replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 def _extract_meta_text(dd_node, class_name: str) -> str:
     container = dd_node.find("div", class_=class_name)
     if container is None:
@@ -265,29 +408,29 @@ def _append_unique_records(
         destination.append(record)
 
 
+def _normalize_space(value: str | None) -> str:
+    if not value:
+        return ""
+    return " ".join(value.split())
+
+
 def _should_use_recent_page_fallback(exc: Exception) -> bool:
     error_text = str(exc).lower()
-    return any(token in error_text for token in ("429", "500", "502", "503", "504", "connection", "timeout"))
-
-
-def _results_with_backoff(client: arxiv.Client, search: arxiv.Search):
-    for attempt in range(len(ARXIV_EXTRA_BACKOFF_SECONDS) + 1):
-        try:
-            yield from client.results(search)
-            return
-        except Exception as exc:
-            if _should_use_recent_page_fallback(exc):
-                raise
-            if attempt >= len(ARXIV_EXTRA_BACKOFF_SECONDS):
-                raise
-            time.sleep(ARXIV_EXTRA_BACKOFF_SECONDS[attempt])
-
-
-def _configure_client(client: arxiv.Client, contact_email: str | None) -> None:
-    user_agent = ARXIV_USER_AGENT
-    if contact_email:
-        user_agent = f"{user_agent} mailto:{contact_email}"
-
-    client._session.headers.update({"user-agent": user_agent})
-    if contact_email:
-        client._session.headers.update({"from": contact_email})
+    return any(
+        token in error_text
+        for token in (
+            "403",
+            "406",
+            "429",
+            "500",
+            "502",
+            "503",
+            "504",
+            "connection",
+            "timeout",
+            "timed out",
+            "forbidden",
+            "not acceptable",
+            "empty arxiv api response",
+        )
+    )
