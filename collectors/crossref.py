@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import html
+import random
 import re
+import time
 from datetime import date, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 
 import requests
@@ -13,6 +16,9 @@ from pipeline.models import PaperRecord
 
 CROSSREF_WORKS_API_URL = "https://api.crossref.org/works"
 USER_AGENT = "DailyPaperBot/1.0 (+https://github.com/lelouchsola/arXiv-Daily-Summarizer)"
+CROSSREF_MIN_REQUEST_INTERVAL_SECONDS = 1.1
+CROSSREF_MAX_RETRIES = 3
+CROSSREF_RETRY_BACKOFF_SECONDS = 2.0
 CORE_POWER_GROUP_KEY = "core_ieee"
 CORE_POWER_SORT_FIELDS = ("created", "deposited", "published-online", "published")
 DEFAULT_SORT_FIELDS = ("published-online", "published", "created")
@@ -27,6 +33,8 @@ NON_RESEARCH_TITLE_PATTERNS = (
     "editorial board",
 )
 
+_last_crossref_request_started_at = 0.0
+
 
 def collect_crossref_journal_papers(
     config: JournalSourceConfig,
@@ -39,6 +47,7 @@ def collect_crossref_journal_papers(
 ) -> list[PaperRecord]:
     session = requests.Session()
     headers = {"User-Agent": USER_AGENT}
+    contact_email = contact_email.strip() if contact_email else None
     if contact_email:
         headers["User-Agent"] = f"{USER_AGENT} mailto:{contact_email}"
     session.headers.update(headers)
@@ -50,7 +59,14 @@ def collect_crossref_journal_papers(
     sort_fields = _sort_fields_for_config(config)
 
     for issn in config.issns:
-        items = _fetch_crossref_items(session, issn, latest_rows, timeout_seconds, sort_fields)
+        items = _fetch_crossref_items(
+            session,
+            issn,
+            latest_rows,
+            timeout_seconds,
+            sort_fields,
+            contact_email,
+        )
         for item in items:
             record = _item_to_record(item, config)
             if not record or record.id in seen_ids:
@@ -77,6 +93,7 @@ def _fetch_crossref_items(
     latest_rows: int,
     timeout_seconds: int,
     sort_fields: tuple[str, ...],
+    contact_email: str | None = None,
 ) -> list[dict]:
     select_fields = ",".join(
         [
@@ -103,18 +120,17 @@ def _fetch_crossref_items(
     seen_item_ids: set[str] = set()
 
     for sort_field in sort_fields:
-        response = session.get(
-            CROSSREF_WORKS_API_URL,
-            params={
-                "filter": f"issn:{issn}",
-                "sort": sort_field,
-                "order": "desc",
-                "rows": latest_rows,
-                "select": select_fields,
-            },
-            timeout=timeout_seconds,
-        )
-        response.raise_for_status()
+        params = {
+            "filter": f"issn:{issn}",
+            "sort": sort_field,
+            "order": "desc",
+            "rows": latest_rows,
+            "select": select_fields,
+        }
+        if contact_email:
+            params["mailto"] = contact_email
+
+        response = _request_crossref(session, params, timeout_seconds)
         for item in response.json().get("message", {}).get("items", []):
             identifier = _item_identifier(item)
             if identifier in seen_item_ids:
@@ -123,6 +139,68 @@ def _fetch_crossref_items(
             items.append(item)
 
     return items
+
+
+def _request_crossref(
+    session: requests.Session,
+    params: dict[str, str | int],
+    timeout_seconds: int,
+) -> requests.Response:
+    for attempt in range(CROSSREF_MAX_RETRIES + 1):
+        _wait_for_crossref_rate_limit()
+        response = session.get(
+            CROSSREF_WORKS_API_URL,
+            params=params,
+            timeout=timeout_seconds,
+        )
+
+        if response.status_code != 429:
+            response.raise_for_status()
+            return response
+
+        if attempt >= CROSSREF_MAX_RETRIES:
+            response.raise_for_status()
+
+        retry_after = _retry_after_seconds(response.headers.get("Retry-After"))
+        backoff = CROSSREF_RETRY_BACKOFF_SECONDS * (2**attempt)
+        wait_seconds = max(retry_after, backoff) + random.uniform(0.0, 0.5)
+        print(
+            "Crossref rate limit reached; "
+            f"retrying in {wait_seconds:.1f}s "
+            f"({attempt + 1}/{CROSSREF_MAX_RETRIES})."
+        )
+        time.sleep(wait_seconds)
+
+    raise RuntimeError("Crossref request retry loop exited unexpectedly")
+
+
+def _wait_for_crossref_rate_limit() -> None:
+    global _last_crossref_request_started_at
+
+    elapsed = time.monotonic() - _last_crossref_request_started_at
+    remaining = CROSSREF_MIN_REQUEST_INTERVAL_SECONDS - elapsed
+    if remaining > 0:
+        time.sleep(remaining)
+    _last_crossref_request_started_at = time.monotonic()
+
+
+def _retry_after_seconds(value: str | None) -> float:
+    if not value:
+        return 0.0
+
+    try:
+        return max(float(value), 0.0)
+    except ValueError:
+        pass
+
+    try:
+        retry_at = parsedate_to_datetime(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=timezone.utc)
+    return max((retry_at - datetime.now(timezone.utc)).total_seconds(), 0.0)
 
 
 def _item_identifier(item: dict) -> str:
