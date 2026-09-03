@@ -36,6 +36,7 @@ class Settings:
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
     crossref_mailto: str | None = None
+    openalex_api_key: str | None = None
     source_configs: tuple[JournalSourceConfig, ...] = field(default_factory=tuple)
 
 
@@ -198,5 +199,6 @@ def load_settings() -> Settings:
         deepseek_base_url=os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         deepseek_model=os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
         crossref_mailto=os.environ.get("CROSSREF_MAILTO"),
+        openalex_api_key=os.environ.get("OPENALEX_API_KEY"),
         source_configs=source_configs,
     )

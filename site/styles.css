@@ -392,6 +392,15 @@ body {
   white-space: normal;
 }
 .paper-card__summary strong { font-weight: 700; }
+.paper-card__summary--unavailable {
+  padding: 14px 16px;
+  border: 1px solid rgba(93, 69, 45, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(93, 69, 45, 0.05);
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-style: italic;
+}
 .paper-card__value {
   margin: 16px 0 0;
   line-height: 1.82;

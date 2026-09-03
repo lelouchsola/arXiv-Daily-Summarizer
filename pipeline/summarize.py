@@ -10,6 +10,7 @@ from .models import PaperRecord
 
 
 SUMMARY_TEMPLATE = """1. **研究背景和核心动机**：{background}\n\n2. **提出的数学模型、优化算法或主要创新点**：{innovation}\n\n3. **实验验证及核心结论**：{evaluation}\n\n4. **对现实电力/能源系统的潜在应用价值**：{application}\n\n5. **领域判定**：{label}。{reason}"""
+ABSTRACT_UNAVAILABLE_TEXT = "摘要不可用"
 
 
 def enrich_records_with_summaries(records: list[PaperRecord], settings: Settings) -> list[PaperRecord]:
@@ -26,6 +27,16 @@ def enrich_records_with_summaries(records: list[PaperRecord], settings: Settings
     summary_limit = max(settings.summary_count, settings.max_results_per_section * 3)
 
     for index, record in enumerate(records):
+        if not record.abstract_raw.strip():
+            if client is not None and index < summary_limit:
+                try:
+                    _apply_metadata_only_assessment(record, client, settings.deepseek_model)
+                except Exception:
+                    _apply_unavailable_summary(record)
+            else:
+                _apply_unavailable_summary(record)
+            continue
+
         if index >= summary_limit:
             _apply_fallback_summary(record)
             continue
@@ -61,12 +72,12 @@ def _apply_model_summary(record: PaperRecord, client: OpenAI, model: str) -> Non
 要求：
 1. 输出内容必须严谨、学术、简洁。
 2. relevance_score 使用 0 到 10 的评分。
-3. 若缺少摘要，请根据标题、期刊与关键词尽量保守判断。
+3. 所有方法、实验和结论描述必须来自所提供摘要，不得自行补充。
 
 论文标题：{record.title}
 期刊来源：{record.journal}
 作者：{", ".join(record.authors[:8])}
-摘要：{record.abstract_raw or 'No abstract available. Score based on title and source metadata.'}
+摘要：{record.abstract_raw}
 """.strip()
 
     response = client.chat.completions.create(
@@ -99,6 +110,59 @@ def _apply_model_summary(record: PaperRecord, client: OpenAI, model: str) -> Non
     record.llm_score = _safe_float(payload.get("relevance_score"), default=record.rule_score)
     record.final_score = round((record.rule_score * 0.45) + (record.llm_score * 0.55), 2)
     record.score_reason = payload.get("reason") or record.score_reason
+
+
+def _apply_metadata_only_assessment(record: PaperRecord, client: OpenAI, model: str) -> None:
+    prompt = f"""
+你正在为“大湾区大学 IDEA Lab 每日论文精选”判断一篇缺少摘要的论文是否值得推荐。请只根据标题与期刊来源评估相关性，并只返回合法 JSON，不要输出 markdown 代码块。
+
+请返回如下 JSON 结构：
+{{
+  "relevance_label": "【强相关】 | 【较相关】 | 【一般相关】",
+  "relevance_score": 0.0,
+  "reason": "1句中文，只解释标题所体现的相关性，不推测论文方法、实验或结论"
+}}
+
+要求：
+1. relevance_score 使用 0 到 10 的评分。
+2. 不得推测摘要、数学模型、算法细节、实验设置或研究结论。
+
+论文标题：{record.title}
+期刊来源：{record.journal}
+""".strip()
+
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.1,
+        messages=[
+            {
+                "role": "system",
+                "content": "Return strict JSON only. Do not infer details not present in the title.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+    )
+    content = response.choices[0].message.content or ""
+    payload = _parse_json_blob(content)
+
+    record.ai_summary = ABSTRACT_UNAVAILABLE_TEXT
+    record.application_value = _unavailable_application_value()
+    record.relevance_label = _normalize_label(payload.get("relevance_label") or record.relevance_label)
+    record.llm_score = _safe_float(payload.get("relevance_score"), default=record.rule_score)
+    record.final_score = round((record.rule_score * 0.45) + (record.llm_score * 0.55), 2)
+    record.score_reason = payload.get("reason") or record.score_reason
+
+
+def _apply_unavailable_summary(record: PaperRecord) -> None:
+    record.ai_summary = ABSTRACT_UNAVAILABLE_TEXT
+    record.application_value = _unavailable_application_value()
+    record.relevance_label = _fallback_label(record)
+    record.llm_score = record.rule_score
+    record.final_score = round(record.rule_score, 2)
+
+
+def _unavailable_application_value() -> str:
+    return "该论文依据标题、来源、关键词与时效性入选；建议进入原文页面查看摘要后再决定是否精读。"
 
 
 def _apply_fallback_summary(record: PaperRecord) -> None:

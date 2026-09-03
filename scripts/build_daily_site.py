@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from collectors import collect_arxiv_papers, collect_crossref_journal_papers
 from pipeline import (
     dedupe_records,
+    enrich_missing_abstracts,
     enrich_records_with_summaries,
     load_settings,
     score_records,
@@ -93,6 +94,12 @@ def main() -> int:
         + discovery_candidates[: settings.max_results_per_section]
         + core_ieee_candidates[: settings.max_results_per_section]
     )
+    enrich_missing_abstracts(
+        selected_candidates,
+        contact_email=settings.crossref_mailto,
+        openalex_api_key=settings.openalex_api_key,
+    )
+    score_records(selected_candidates, settings)
     enrich_records_with_summaries(selected_candidates, settings)
 
     llm_enabled = bool(settings.deepseek_api_key)

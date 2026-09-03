@@ -54,6 +54,8 @@ Open your repository settings and configure:
    Optional. Enables AI summaries and model-assisted relevance scoring.
 2. `CROSSREF_MAILTO`
    Optional but recommended. A contact email sent with Crossref requests.
+3. `OPENALEX_API_KEY`
+   Optional. Improves the reliability of missing-abstract enrichment; the site still builds without it.
 
 ### Repository Pages settings
 

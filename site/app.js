@@ -189,7 +189,13 @@ function renderPaperList(container, papers, emptyMessage) {
     fragment.querySelector(".score-badge").textContent = `推荐分 ${paper.final_score.toFixed(1)} / 10`;
     fragment.querySelector(".label-badge").textContent = paper.relevance_label;
     fragment.querySelector(".paper-card__reason").textContent = paper.score_reason;
-    fragment.querySelector(".paper-card__summary").innerHTML = formatStructuredText(paper.ai_summary || "");
+    const summaryElement = fragment.querySelector(".paper-card__summary");
+    if (paper.abstract_raw && paper.abstract_raw.trim()) {
+      summaryElement.innerHTML = formatStructuredText(paper.ai_summary || "");
+    } else {
+      summaryElement.textContent = "摘要不可用";
+      summaryElement.classList.add("paper-card__summary--unavailable");
+    }
     fragment.querySelector(".paper-card__value").textContent = paper.application_value;
 
     const keywordContainer = fragment.querySelector(".paper-card__keywords");

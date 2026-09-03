@@ -58,6 +58,8 @@ IMPLEMENTATION_DESIGN.md
    可选。用于生成 AI 摘要和模型辅助评分。
 2. `CROSSREF_MAILTO`
    可选但推荐。用于 Crossref 请求中的联系邮箱。
+3. `OPENALEX_API_KEY`
+   可选。用于提高缺失摘要补全请求的稳定性；不配置也可以正常构建。
 
 说明：
 
