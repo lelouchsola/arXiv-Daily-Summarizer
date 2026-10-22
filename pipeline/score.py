@@ -401,9 +401,141 @@ DISCOVERY_REQUIRED_GROUPS = {
     "\u6784\u7f51\u578b",
 }
 
+DATASET_GROUP_KEY = "datasets"
+DATASET_KEYWORD_GROUPS = {
+    "电力数据": {
+        "power system": 2.0,
+        "power systems": 2.0,
+        "electric power": 1.8,
+        "power grid": 2.0,
+        "electric grid": 1.9,
+        "smart grid": 1.9,
+        "microgrid": 1.7,
+        "distribution grid": 1.9,
+        "transmission grid": 1.9,
+        "power quality": 1.8,
+        "grid fault": 1.8,
+    },
+    "负荷用能": {
+        "electric load": 2.0,
+        "load profile": 1.8,
+        "load demand": 1.7,
+        "load forecasting": 1.8,
+        "electricity consumption": 2.0,
+        "energy consumption": 1.6,
+        "smart meter": 2.0,
+        "building energy": 1.7,
+        "demand response": 1.7,
+    },
+    "新能源气象": {
+        "wind power": 1.9,
+        "wind power forecasting": 2.1,
+        "solar power": 1.9,
+        "solar forecasting": 2.0,
+        "photovoltaic": 1.8,
+        "pv generation": 1.9,
+        "renewable generation": 1.8,
+        "solar irradiance": 1.5,
+        "wind speed": 1.2,
+        "weather": 0.7,
+        "climate": 0.6,
+    },
+    "车网数据": {
+        "electric vehicle": 1.8,
+        "ev charging": 2.0,
+        "charging station": 1.8,
+        "vehicle-to-grid": 2.1,
+        "v2g": 1.7,
+        "charging demand": 1.8,
+    },
+    "市场数据": {
+        "electricity price": 2.0,
+        "electricity market": 2.0,
+        "energy market": 1.6,
+        "market clearing": 1.8,
+    },
+    "AI基准": {
+        "benchmark": 1.0,
+        "machine learning": 0.9,
+        "deep learning": 0.8,
+        "forecasting": 0.8,
+        "anomaly detection": 1.0,
+        "fault diagnosis": 1.1,
+    },
+}
+DATASET_KEYWORDS = {
+    keyword: weight
+    for keywords in DATASET_KEYWORD_GROUPS.values()
+    for keyword, weight in keywords.items()
+}
+DATASET_KEYWORD_TO_GROUP = {
+    keyword: group_name
+    for group_name, keywords in DATASET_KEYWORD_GROUPS.items()
+    for keyword in keywords
+}
+DATASET_STRONG_DOMAIN_TERMS = {
+    "power system",
+    "power systems",
+    "electric power",
+    "power grid",
+    "electric grid",
+    "smart grid",
+    "microgrid",
+    "distribution grid",
+    "transmission grid",
+    "power quality",
+    "grid fault",
+    "electric load",
+    "load profile",
+    "load demand",
+    "load forecasting",
+    "electricity consumption",
+    "energy consumption",
+    "smart meter",
+    "building energy",
+    "demand response",
+    "wind power",
+    "solar power",
+    "photovoltaic",
+    "pv generation",
+    "renewable generation",
+    "electric vehicle",
+    "ev charging",
+    "charging station",
+    "vehicle-to-grid",
+    "v2g",
+    "charging demand",
+    "electricity price",
+    "electricity market",
+    "market clearing",
+}
+DATASET_SIGNAL_TERMS = {
+    "dataset",
+    "data set",
+    "database",
+    "data collection",
+    "benchmark data",
+    "measurements",
+    "observations",
+    "time series",
+    "records",
+    "open data",
+}
+
 
 def score_records(records: list[PaperRecord], settings: Settings) -> list[PaperRecord]:
     for record in records:
+        if _is_dataset_record(record):
+            matched_keywords = _extract_dataset_keywords(record)
+            record.matched_keywords = matched_keywords
+            record.matched_keyword_groups = _extract_dataset_keyword_groups(matched_keywords)
+            record.rule_score = round(_calculate_dataset_score(record, settings, matched_keywords), 2)
+            record.llm_score = record.rule_score
+            record.final_score = record.rule_score
+            record.relevance_label = _label_for_score(record.rule_score)
+            record.score_reason = _build_dataset_reason(record, settings)
+            continue
+
         matched_keywords = _extract_matched_keywords(record)
         record.matched_keywords = matched_keywords
         record.matched_keyword_groups = _extract_matched_keyword_groups(matched_keywords)
@@ -416,17 +548,108 @@ def score_records(records: list[PaperRecord], settings: Settings) -> list[PaperR
 
 
 def passes_rule_gate(record: PaperRecord) -> bool:
+    if _is_dataset_record(record):
+        return _has_dataset_relevance(record)
     return _has_minimum_relevance(record)
 
 
 def passes_display_gate(record: PaperRecord, llm_enabled: bool) -> bool:
-    if not _has_minimum_relevance(record):
+    has_relevance = _has_dataset_relevance(record) if _is_dataset_record(record) else _has_minimum_relevance(record)
+    if not has_relevance:
         return False
 
     if llm_enabled:
         return record.final_score >= 6.0
 
     return record.rule_score >= 6.0
+
+
+def _is_dataset_record(record: PaperRecord) -> bool:
+    return record.metadata.get("group_key") == DATASET_GROUP_KEY
+
+
+def _extract_dataset_keywords(record: PaperRecord) -> list[str]:
+    title_lower = record.title.lower()
+    abstract_lower = record.abstract_raw.lower()
+    matches = [
+        keyword
+        for keyword in DATASET_KEYWORDS
+        if _keyword_in_text(keyword, title_lower) or _keyword_in_text(keyword, abstract_lower)
+    ]
+    matches.sort(key=lambda keyword: DATASET_KEYWORDS[keyword], reverse=True)
+    return matches[:6]
+
+
+def _extract_dataset_keyword_groups(matched_keywords: list[str]) -> list[str]:
+    groups: list[str] = []
+    for keyword in matched_keywords:
+        group_name = DATASET_KEYWORD_TO_GROUP.get(keyword)
+        if group_name and group_name not in groups:
+            groups.append(group_name)
+    return groups
+
+
+def _has_dataset_relevance(record: PaperRecord) -> bool:
+    text = f"{record.title} {record.abstract_raw}".lower()
+    return any(_keyword_in_text(term, text) for term in DATASET_STRONG_DOMAIN_TERMS)
+
+
+def _calculate_dataset_score(
+    record: PaperRecord,
+    settings: Settings,
+    matched_keywords: list[str],
+) -> float:
+    title_lower = record.title.lower()
+    domain_score = 0.0
+    method_score = 0.0
+
+    for keyword in matched_keywords:
+        occurrence_weight = 1.0 if _keyword_in_text(keyword, title_lower) else 0.5
+        contribution = DATASET_KEYWORDS[keyword] * occurrence_weight
+        if DATASET_KEYWORD_TO_GROUP[keyword] == "AI基准":
+            method_score += contribution
+        else:
+            domain_score += contribution
+
+    text = f"{record.title} {record.abstract_raw}".lower()
+    signal_hits = sum(1 for term in DATASET_SIGNAL_TERMS if _keyword_in_text(term, text))
+    dataset_signal_score = min(0.8 + (signal_hits * 0.35), 1.5)
+    abstract_bonus = 0.45 if len(record.abstract_raw.strip()) >= 250 else 0.0
+    title_bonus = 0.2 if 6 <= len(record.title.split()) <= 22 else 0.0
+
+    score = 0.0
+    score += min(domain_score, 4.8)
+    score += min(method_score, 0.8)
+    score += 1.25 if _has_dataset_relevance(record) else 0.0
+    score += dataset_signal_score
+    score += _journal_priority(record)
+    score += _dataset_recency_bonus(record, settings)
+    score += abstract_bonus + title_bonus
+    return max(0.0, min(score, 10.0))
+
+
+def _dataset_recency_bonus(record: PaperRecord, settings: Settings) -> float:
+    published_local = record.published_at_local(settings.timezone_name).date()
+    days_old = max((_current_local_date(settings) - published_local).days, 0)
+    if days_old <= 0:
+        return 1.5
+    if days_old == 1:
+        return 1.35
+    if days_old <= 3:
+        return 1.15
+    if days_old <= 7:
+        return 0.85
+    if days_old <= settings.dataset_lookback_days:
+        return 0.45
+    return 0.0
+
+
+def _build_dataset_reason(record: PaperRecord, settings: Settings) -> str:
+    published_local = record.published_at_local(settings.timezone_name).date()
+    days_old = max((_current_local_date(settings) - published_local).days, 0)
+    age_text = "今日" if days_old == 0 else f"{days_old} 天前"
+    signals = "、".join(record.matched_keywords[:3]) or "电力能源数据"
+    return f"{age_text}发布；数据相关信号：{signals}。"
 
 
 def _calculate_rule_score(record: PaperRecord, settings: Settings, matched_keywords: list[str]) -> float:

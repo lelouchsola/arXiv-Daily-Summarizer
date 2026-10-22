@@ -55,8 +55,11 @@ def enrich_missing_abstracts(
             abstract = _fetch_openalex_abstract(session, record.doi, openalex_api_key)
             abstract_source = "openalex"
 
-            # Nature landing pages expose a reliable machine-readable description.
-            if not abstract and record.source == "nature":
+            # Nature and ESSD landing pages often expose a machine-readable description.
+            page_friendly_journals = {"scientific data", "earth system science data"}
+            if not abstract and (
+                record.source == "nature" or record.journal.lower() in page_friendly_journals
+            ):
                 page_request_started_at = _wait_for_page_request(page_request_started_at)
                 abstract = _fetch_page_abstract(session, record.url)
                 abstract_source = "publisher_landing_page"

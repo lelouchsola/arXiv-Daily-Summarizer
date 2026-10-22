@@ -10,6 +10,7 @@ from .models import PaperRecord
 
 
 SUMMARY_TEMPLATE = """1. **研究背景和核心动机**：{background}\n\n2. **提出的数学模型、优化算法或主要创新点**：{innovation}\n\n3. **实验验证及核心结论**：{evaluation}\n\n4. **对现实电力/能源系统的潜在应用价值**：{application}\n\n5. **领域判定**：{label}。{reason}"""
+DATASET_SUMMARY_TEMPLATE = """1. **数据集内容和研究目的**：{content}\n\n2. **数据覆盖与采集方式**：{coverage}\n\n3. **数据质量与可复用性**：{quality}\n\n4. **潜在研究用途**：{applications}\n\n5. **领域判定**：{label}。{reason}"""
 ABSTRACT_UNAVAILABLE_TEXT = "摘要不可用"
 
 
@@ -24,7 +25,10 @@ def enrich_records_with_summaries(records: list[PaperRecord], settings: Settings
             api_key=settings.deepseek_api_key,
         )
 
-    summary_limit = max(settings.summary_count, settings.max_results_per_section * 3)
+    summary_limit = max(
+        settings.summary_count,
+        (settings.max_results_per_section * 3) + settings.max_dataset_results,
+    )
 
     for index, record in enumerate(records):
         if not record.abstract_raw.strip():
@@ -46,7 +50,10 @@ def enrich_records_with_summaries(records: list[PaperRecord], settings: Settings
             continue
 
         try:
-            _apply_model_summary(record, client, settings.deepseek_model)
+            if _is_dataset_record(record):
+                _apply_dataset_model_summary(record, client, settings.deepseek_model)
+            else:
+                _apply_model_summary(record, client, settings.deepseek_model)
         except Exception:
             _apply_fallback_summary(record)
 
@@ -108,13 +115,70 @@ def _apply_model_summary(record: PaperRecord, client: OpenAI, model: str) -> Non
     record.application_value = payload.get("application_value") or "适合纳入今天的快速浏览清单。"
     record.relevance_label = _normalize_label(payload.get("relevance_label") or record.relevance_label)
     record.llm_score = _safe_float(payload.get("relevance_score"), default=record.rule_score)
-    record.final_score = round((record.rule_score * 0.45) + (record.llm_score * 0.55), 2)
+    record.final_score = _blend_scores(record)
+    record.score_reason = payload.get("reason") or record.score_reason
+
+
+def _apply_dataset_model_summary(record: PaperRecord, client: OpenAI, model: str) -> None:
+    prompt = f"""
+你正在为“大湾区大学 IDEA Lab 每日论文精选”的公开数据集栏目撰写中文数据快报。请仅依据下方标题与摘要，只返回合法 JSON，不要输出 markdown 代码块。
+
+请返回如下 JSON 结构：
+{{
+  "content": "1-2句，说明数据集包含什么以及发布目的",
+  "coverage": "1-2句，说明时间、空间、对象、变量或采集方式；摘要未说明时明确写摘要未说明",
+  "quality": "1-2句，说明质量控制、验证方式、格式或可复用性；摘要未说明时明确写摘要未说明",
+  "applications": "1句，说明对电力系统、能源分析、优化或人工智能研究的潜在用途",
+  "relevance_label": "【强相关】 | 【较相关】 | 【一般相关】",
+  "relevance_score": 0.0,
+  "reason": "1句中文，解释与电力、能源或AI数据研究的相关性",
+  "application_value": "1句中文，说明为什么值得今天优先查看"
+}}
+
+要求：
+1. relevance_score 使用 0 到 10 的评分。
+2. 不得编造数据规模、采样频率、文件格式、下载地址或质量验证结果。
+3. 页面只链接数据论文，不需要寻找或推测真实数据下载链接。
+
+数据论文标题：{record.title}
+期刊来源：{record.journal}
+作者：{", ".join(record.authors[:8])}
+摘要：{record.abstract_raw}
+""".strip()
+
+    response = client.chat.completions.create(
+        model=model,
+        temperature=0.15,
+        messages=[
+            {
+                "role": "system",
+                "content": "Return strict JSON only. Never invent dataset details.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+    )
+    content = response.choices[0].message.content or ""
+    payload = _parse_json_blob(content)
+
+    record.ai_summary = DATASET_SUMMARY_TEMPLATE.format(
+        content=(payload.get("content") or "摘要未说明数据集的具体内容。"),
+        coverage=(payload.get("coverage") or "摘要未说明数据覆盖范围与采集方式。"),
+        quality=(payload.get("quality") or "摘要未说明质量控制与复用条件。"),
+        applications=(payload.get("applications") or "可作为相关研究的数据入口，具体适用性需结合原文判断。"),
+        label=(payload.get("relevance_label") or _fallback_label(record)),
+        reason=(payload.get("reason") or "与当前关注的数据研究方向存在一定关联。"),
+    )
+    record.application_value = payload.get("application_value") or "建议先查看数据论文，再判断是否适合当前研究任务。"
+    record.relevance_label = _normalize_label(payload.get("relevance_label") or record.relevance_label)
+    record.llm_score = _safe_float(payload.get("relevance_score"), default=record.rule_score)
+    record.final_score = _blend_scores(record)
     record.score_reason = payload.get("reason") or record.score_reason
 
 
 def _apply_metadata_only_assessment(record: PaperRecord, client: OpenAI, model: str) -> None:
+    content_type = "公开数据论文" if _is_dataset_record(record) else "论文"
     prompt = f"""
-你正在为“大湾区大学 IDEA Lab 每日论文精选”判断一篇缺少摘要的论文是否值得推荐。请只根据标题与期刊来源评估相关性，并只返回合法 JSON，不要输出 markdown 代码块。
+你正在为“大湾区大学 IDEA Lab 每日论文精选”判断一篇缺少摘要的{content_type}是否值得推荐。请只根据标题与期刊来源评估相关性，并只返回合法 JSON，不要输出 markdown 代码块。
 
 请返回如下 JSON 结构：
 {{
@@ -146,22 +210,24 @@ def _apply_metadata_only_assessment(record: PaperRecord, client: OpenAI, model: 
     payload = _parse_json_blob(content)
 
     record.ai_summary = ABSTRACT_UNAVAILABLE_TEXT
-    record.application_value = _unavailable_application_value()
+    record.application_value = _unavailable_application_value(record)
     record.relevance_label = _normalize_label(payload.get("relevance_label") or record.relevance_label)
     record.llm_score = _safe_float(payload.get("relevance_score"), default=record.rule_score)
-    record.final_score = round((record.rule_score * 0.45) + (record.llm_score * 0.55), 2)
+    record.final_score = _blend_scores(record)
     record.score_reason = payload.get("reason") or record.score_reason
 
 
 def _apply_unavailable_summary(record: PaperRecord) -> None:
     record.ai_summary = ABSTRACT_UNAVAILABLE_TEXT
-    record.application_value = _unavailable_application_value()
+    record.application_value = _unavailable_application_value(record)
     record.relevance_label = _fallback_label(record)
     record.llm_score = record.rule_score
     record.final_score = round(record.rule_score, 2)
 
 
-def _unavailable_application_value() -> str:
+def _unavailable_application_value(record: PaperRecord) -> str:
+    if _is_dataset_record(record):
+        return "该数据论文依据标题、来源、关键词与时效性入选；建议进入原文页面核对数据说明与复用条件。"
     return "该论文依据标题、来源、关键词与时效性入选；建议进入原文页面查看摘要后再决定是否精读。"
 
 
@@ -176,6 +242,15 @@ def _apply_fallback_summary(record: PaperRecord) -> None:
 def _fallback_summary_text(record: PaperRecord) -> str:
     text = re.sub(r"\s+", " ", record.abstract_raw).strip()
     short_text = text[:220].rstrip() + ("..." if len(text) > 220 else "")
+    if _is_dataset_record(record):
+        return DATASET_SUMMARY_TEMPLATE.format(
+            content=(short_text or "摘要未说明数据集的具体内容。"),
+            coverage="请进入数据论文核对时间、空间、对象、变量与采集方式。",
+            quality="请进入数据论文核对质量控制、验证方法、许可与复用条件。",
+            applications=_fallback_application_value(record),
+            label=_fallback_label(record),
+            reason=(record.score_reason or "该数据论文与当前关注方向存在一定关联。"),
+        )
     return SUMMARY_TEMPLATE.format(
         background="该工作处于电力系统、能源优化与数据驱动决策相关研究脉络中，适合作为近三天新增论文的快速筛查对象。",
         innovation=(short_text or "当前缺少公开摘要，暂时只能依据标题、期刊来源与关键词命中结果进行保守判断。"),
@@ -187,6 +262,8 @@ def _fallback_summary_text(record: PaperRecord) -> str:
 
 
 def _fallback_application_value(record: PaperRecord) -> str:
+    if _is_dataset_record(record):
+        return "该数据集可作为电力能源分析、预测、优化或人工智能任务的候选数据入口。"
     journal_lower = record.journal.lower()
     if "smart grid" in journal_lower or "power systems" in journal_lower:
         return "该工作较可能直接服务于电力系统运行优化、调度或规划决策。"
@@ -213,6 +290,16 @@ def _normalize_label(label: str) -> str:
         "Background Read": "Background Read",
     }
     return mapping.get(label, label)
+
+
+def _is_dataset_record(record: PaperRecord) -> bool:
+    return record.metadata.get("group_key") == "datasets"
+
+
+def _blend_scores(record: PaperRecord) -> float:
+    if _is_dataset_record(record):
+        return round((record.rule_score * 0.6) + (record.llm_score * 0.4), 2)
+    return round((record.rule_score * 0.45) + (record.llm_score * 0.55), 2)
 
 
 def _parse_json_blob(text: str) -> dict:

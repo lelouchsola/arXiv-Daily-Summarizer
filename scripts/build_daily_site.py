@@ -55,12 +55,17 @@ def main() -> int:
             continue
 
         try:
+            max_age_days = (
+                settings.dataset_lookback_days
+                if source_config.group_key == "datasets"
+                else settings.crossref_max_age_days
+            )
             journal_records = collect_crossref_journal_papers(
                 config=source_config,
                 target_date=target_date,
                 timezone_name=settings.timezone_name,
                 latest_rows=settings.crossref_latest_rows,
-                max_age_days=settings.crossref_max_age_days,
+                max_age_days=max_age_days,
                 contact_email=settings.crossref_mailto,
             )
             print(f"Collected {len(journal_records)} records from {source_config.journal_title}.")
@@ -77,22 +82,36 @@ def main() -> int:
     core_ieee_journals = {
         config.journal_title for config in settings.source_configs if config.group_key == "core_ieee"
     }
+    dataset_journals = {
+        config.journal_title for config in settings.source_configs if config.group_key == "datasets"
+    }
     arxiv_candidates = [
         record for record in records if record.source == "arxiv" and passes_rule_gate(record)
     ]
     discovery_candidates = [
         record
         for record in records
-        if record.source != "arxiv" and record.journal not in core_ieee_journals and passes_rule_gate(record)
+        if record.source != "arxiv"
+        and not _record_in_group(record, "core_ieee", core_ieee_journals)
+        and not _record_in_group(record, "datasets", dataset_journals)
+        and passes_rule_gate(record)
     ]
     core_ieee_candidates = [
-        record for record in records if record.journal in core_ieee_journals and passes_rule_gate(record)
+        record
+        for record in records
+        if _record_in_group(record, "core_ieee", core_ieee_journals) and passes_rule_gate(record)
+    ]
+    dataset_candidates = [
+        record
+        for record in records
+        if _record_in_group(record, "datasets", dataset_journals) and passes_rule_gate(record)
     ]
 
     selected_candidates = (
         arxiv_candidates[: settings.max_results_per_section]
         + discovery_candidates[: settings.max_results_per_section]
         + core_ieee_candidates[: settings.max_results_per_section]
+        + dataset_candidates[: settings.max_dataset_results]
     )
     enrich_missing_abstracts(
         selected_candidates,
@@ -109,21 +128,33 @@ def main() -> int:
     discovery_selected = [
         record
         for record in selected_candidates
-        if record.source != "arxiv" and record.journal not in core_ieee_journals and passes_display_gate(record, llm_enabled)
+        if record.source != "arxiv"
+        and not _record_in_group(record, "core_ieee", core_ieee_journals)
+        and not _record_in_group(record, "datasets", dataset_journals)
+        and passes_display_gate(record, llm_enabled)
     ]
     core_ieee_selected = [
         record
         for record in selected_candidates
-        if record.journal in core_ieee_journals and passes_display_gate(record, llm_enabled)
+        if _record_in_group(record, "core_ieee", core_ieee_journals)
+        and passes_display_gate(record, llm_enabled)
+    ]
+    dataset_selected = [
+        record
+        for record in selected_candidates
+        if _record_in_group(record, "datasets", dataset_journals)
+        and passes_display_gate(record, llm_enabled)
     ]
 
     arxiv_selected.sort(key=_sort_key, reverse=True)
     discovery_selected.sort(key=_sort_key, reverse=True)
     core_ieee_selected.sort(key=_sort_key, reverse=True)
+    dataset_selected.sort(key=_sort_key, reverse=True)
     selected_records = (
         arxiv_selected[: settings.max_results_per_section]
         + discovery_selected[: settings.max_results_per_section]
         + core_ieee_selected[: settings.max_results_per_section]
+        + dataset_selected[: settings.max_dataset_results]
     )
 
     site_dir = Path(__file__).resolve().parents[1] / "site"
@@ -136,7 +167,7 @@ def main() -> int:
         source_errors=source_errors,
     )
 
-    print(f"Wrote {len(selected_records)} papers to {site_dir / 'latest.json'}")
+    print(f"Wrote {len(selected_records)} papers and datasets to {site_dir / 'latest.json'}")
     if source_errors:
         print("Completed with partial source failures:")
         for error in source_errors:
@@ -147,6 +178,10 @@ def main() -> int:
 
 def _sort_key(record: PaperRecord) -> tuple[float, float]:
     return (record.final_score, record.published_at.timestamp())
+
+
+def _record_in_group(record: PaperRecord, group_key: str, configured_journals: set[str]) -> bool:
+    return record.metadata.get("group_key") == group_key or record.journal in configured_journals
 
 
 if __name__ == "__main__":

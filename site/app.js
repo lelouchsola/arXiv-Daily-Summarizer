@@ -9,6 +9,7 @@
 const SECTION_CONFIGS = [
   {
     key: "arxiv",
+    defaultTitle: "arXiv 精选榜",
     titleId: "arxiv-title",
     descriptionId: "arxiv-description",
     countId: "arxiv-count",
@@ -17,6 +18,7 @@ const SECTION_CONFIGS = [
   },
   {
     key: "discovery",
+    defaultTitle: "Nature / Joule 发现榜",
     titleId: "discovery-title",
     descriptionId: "discovery-description",
     countId: "discovery-count",
@@ -25,11 +27,22 @@ const SECTION_CONFIGS = [
   },
   {
     key: "core_ieee",
+    defaultTitle: "核心电力期刊榜",
     titleId: "core-title",
     descriptionId: "core-description",
     countId: "core-count",
     listId: "core-list",
     emptyMessage: "当前筛选下没有核心电力期刊论文。",
+  },
+  {
+    key: "datasets",
+    defaultTitle: "最新公开数据集",
+    titleId: "dataset-title",
+    descriptionId: "dataset-description",
+    countId: "dataset-count",
+    listId: "dataset-list",
+    countUnit: "条",
+    emptyMessage: "最近 14 天没有达到相关性门槛的公开数据集。",
   },
 ];
 
@@ -60,7 +73,8 @@ function renderFrame() {
   document.getElementById("site-subtitle").textContent = meta.subtitle;
   document.getElementById("target-date").textContent = `Date ${meta.target_date}`;
   document.getElementById("updated-at").textContent = `Generated ${formatDateTime(meta.generated_at, meta.timezone)}`;
-  document.getElementById("window-pill").textContent = `${meta.lookback_days}-day window`;
+  document.getElementById("window-pill").textContent =
+    `论文 ${meta.lookback_days} 天 · 数据集 ${meta.dataset_lookback_days || 14} 天`;
 
   const rssLink = document.getElementById("rss-link");
   if (rssLink) {
@@ -151,17 +165,21 @@ function renderSections() {
   let totalVisible = 0;
 
   SECTION_CONFIGS.forEach((config) => {
-    const section = sections[config.key];
+    const section = sections[config.key] || {
+      title: config.defaultTitle,
+      description: "等待下一次自动构建更新。",
+      papers: [],
+    };
     const visiblePapers = getVisiblePapers(section.papers);
     totalVisible += visiblePapers.length;
 
     document.getElementById(config.titleId).textContent = section.title;
     document.getElementById(config.descriptionId).textContent = section.description;
-    document.getElementById(config.countId).textContent = `${visiblePapers.length} 篇`;
+    document.getElementById(config.countId).textContent = `${visiblePapers.length} ${config.countUnit || "篇"}`;
     renderPaperList(document.getElementById(config.listId), visiblePapers, config.emptyMessage);
   });
 
-  document.getElementById("result-count").textContent = `${totalVisible} 篇论文通过当前筛选`;
+  document.getElementById("result-count").textContent = `${totalVisible} 条内容通过当前筛选`;
 }
 
 function renderPaperList(container, papers, emptyMessage) {
@@ -222,6 +240,9 @@ function renderPaperList(container, papers, emptyMessage) {
 
     const primaryLink = fragment.querySelector(".primary-link");
     primaryLink.href = paper.url;
+    if (paper.metadata && paper.metadata.group_key === "datasets") {
+      primaryLink.textContent = "查看数据论文";
+    }
 
     const secondaryLink = fragment.querySelector(".secondary-link");
     if (paper.pdf_url) {
@@ -295,7 +316,7 @@ function buildFilterChips(container, options, activeValue, onClick) {
 
 function renderErrorState(error) {
   document.getElementById("updated-at").textContent = "数据加载失败";
-  document.getElementById("result-count").textContent = "0 篇论文通过当前筛选";
+  document.getElementById("result-count").textContent = "0 条内容通过当前筛选";
 
   SECTION_CONFIGS.forEach((config) => {
     const container = document.getElementById(config.listId);

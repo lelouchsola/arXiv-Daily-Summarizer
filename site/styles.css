@@ -310,6 +310,10 @@ body {
 }
 .digest-section--primary { box-shadow: inset 0 0 0 1px rgba(14, 90, 84, 0.06); }
 .digest-section--secondary { box-shadow: inset 0 0 0 1px rgba(180, 88, 30, 0.08); }
+.digest-section--dataset {
+  background: linear-gradient(145deg, rgba(244, 250, 248, 0.98), rgba(251, 247, 239, 0.98));
+  box-shadow: inset 0 0 0 1px rgba(32, 108, 117, 0.11);
+}
 .digest-section__header {
   display: flex;
   justify-content: space-between;

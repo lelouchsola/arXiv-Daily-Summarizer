@@ -5,7 +5,7 @@ This repository builds a daily research briefing website for power systems, opti
 Instead of sending an email, the pipeline now:
 
 1. Runs once per day with GitHub Actions.
-2. Collects papers released on the same day from arXiv and selected journals.
+2. Collects recent papers, journal articles, and public dataset descriptors.
 3. Scores and ranks the papers.
 4. Generates short Chinese summaries.
 5. Publishes the result to GitHub Pages.
@@ -14,24 +14,19 @@ Instead of sending an email, the pipeline now:
 
 The project now ships a GitHub Pages workflow and a static front end in [site/index.html](/C:/codex_workspace/dailyPaper/site/index.html).
 
-Implemented pieces:
+The site now has four independent reading tracks:
 
-1. Daily static site build pipeline.
-2. arXiv collector.
-3. Crossref-based journal metadata collector for:
-   - Nature Energy
-   - Nature Communications
-   - Joule
-   - IEEE Transactions on Smart Grid
-   - IEEE Transactions on Power Systems
-   - IEEE Transactions on Sustainable Energy
-4. Rule-based scoring, batch deduplication, and optional DeepSeek summaries.
+1. Curated arXiv papers.
+2. Nature / Joule discoveries.
+3. Core power and energy journals, including IEEE Transactions and Applied Energy.
+4. Recent public datasets from Scientific Data, IEEE Data Descriptions, Data in Brief, and Earth System Science Data.
 
 Notes:
 
 1. Journal collection is intentionally non-blocking. If one source fails, the site still publishes.
-2. The site only shows the current day's build. No cross-day history is stored.
-3. DeepSeek is optional. Without `DEEPSEEK_API_KEY`, the site still builds with fallback summaries.
+2. The site only shows the latest build. No cross-day history is stored.
+3. Dataset descriptors use a 14-day window, a strict power/energy relevance gate, and a maximum of five results.
+4. DeepSeek is optional. Without `DEEPSEEK_API_KEY`, the site still builds with fallback summaries.
 
 ## Repository layout
 
@@ -77,6 +72,8 @@ Main variables:
 5. `SUMMARY_COUNT`
 6. `ARXIV_CATEGORIES`
 7. `ENABLED_SOURCES`
+8. `MAX_DATASET_RESULTS`
+9. `DATASET_LOOKBACK_DAYS`
 
 ## Local usage
 
@@ -98,8 +95,8 @@ The workflow in [.github/workflows/build_daily_site.yml](/C:/codex_workspace/dai
 
 Default schedule:
 
-1. `30 0 * * *` UTC
-2. Equivalent to `08:30` in `Asia/Shanghai`
+1. `17 1 * * *` UTC
+2. Equivalent to `09:17` in `Asia/Shanghai`
 
 ## Next steps
 

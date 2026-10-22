@@ -28,11 +28,23 @@ def write_site_payload(
     core_power_journals = {
         config.journal_title for config in settings.source_configs if config.group_key == "core_ieee"
     }
+    dataset_journals = {
+        config.journal_title for config in settings.source_configs if config.group_key == "datasets"
+    }
     arxiv_records = [record for record in records if record.source == "arxiv"]
     discovery_records = [
-        record for record in records if record.source != "arxiv" and record.journal not in core_power_journals
+        record
+        for record in records
+        if record.source != "arxiv"
+        and not _record_in_group(record, "core_ieee", core_power_journals)
+        and not _record_in_group(record, "datasets", dataset_journals)
     ]
-    core_power_records = [record for record in records if record.journal in core_power_journals]
+    core_power_records = [
+        record for record in records if _record_in_group(record, "core_ieee", core_power_journals)
+    ]
+    dataset_records = [
+        record for record in records if _record_in_group(record, "datasets", dataset_journals)
+    ]
 
     source_counts = Counter(record.source for record in records)
     journal_counts = Counter(record.journal for record in records)
@@ -50,6 +62,8 @@ def write_site_payload(
             "generated_at": generated_at.isoformat(),
             "timezone": settings.timezone_name,
             "lookback_days": settings.lookback_days,
+            "dataset_lookback_days": settings.dataset_lookback_days,
+            "dataset_count": len(dataset_records),
             "paper_count": len(records),
             "source_count": len(source_counts),
             "strong_match_count": strong_match_count,
@@ -75,6 +89,15 @@ def write_site_payload(
                 "description": "汇总 IEEE Transactions 与 Applied Energy、Advances in Applied Energy、Energy Conversion and Management、Renewable Energy、Energy 等核心电力能源期刊。",
                 "count": len(core_power_records),
                 "papers": [record.to_dict(settings.timezone_name) for record in core_power_records],
+            },
+            "datasets": {
+                "title": "最新公开数据集",
+                "description": (
+                    f"追踪最近 {settings.dataset_lookback_days} 天 Scientific Data、IEEE Data Descriptions、"
+                    "Data in Brief 与 Earth System Science Data 中面向电力、能源与 AI 研究的公开数据。"
+                ),
+                "count": len(dataset_records),
+                "papers": [record.to_dict(settings.timezone_name) for record in dataset_records],
             },
         },
         "papers": [record.to_dict(settings.timezone_name) for record in records],
@@ -146,3 +169,7 @@ def _normalize_base_url(base_url: str) -> str:
     if not normalized.endswith("/"):
         normalized += "/"
     return normalized
+
+
+def _record_in_group(record: PaperRecord, group_key: str, configured_journals: set[str]) -> bool:
+    return record.metadata.get("group_key") == group_key or record.journal in configured_journals

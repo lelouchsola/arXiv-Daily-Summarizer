@@ -250,6 +250,7 @@ def _item_to_record(item: dict, config: JournalSourceConfig) -> PaperRecord | No
             "publisher": item.get("publisher"),
             "issns": list(config.issns),
             "journal_weight": config.journal_weight,
+            "group_key": config.group_key,
             "crossref_type": item.get("type"),
         },
     )

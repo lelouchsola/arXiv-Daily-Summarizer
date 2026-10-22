@@ -17,11 +17,12 @@ class JournalSourceConfig:
 class Settings:
     timezone_name: str = "Asia/Shanghai"
     site_title: str = "每日论文精选推送"
-    site_subtitle: str = "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。"
+    site_subtitle: str = "聚焦近三天 arXiv 与重点能源电力期刊的新论文，并追踪近期公开数据集。"
     site_base_url: str = "https://lelouchsola.github.io/arXiv-Daily-Summarizer/"
     subscribe_url: str | None = None
     max_results: int = 20
     max_results_per_section: int = 10
+    max_dataset_results: int = 5
     arxiv_categories: tuple[str, ...] = ("math.OC", "eess.SY")
     max_results_per_arxiv_category: int = 200
     arxiv_page_size: int = 25
@@ -29,9 +30,10 @@ class Settings:
     arxiv_num_retries: int = 1
     crossref_latest_rows: int = 50
     crossref_max_age_days: int = 60
+    dataset_lookback_days: int = 14
     summary_count: int = 20
     lookback_days: int = 3
-    enabled_sources: tuple[str, ...] = ("arxiv", "nature", "joule", "elsevier", "ieee")
+    enabled_sources: tuple[str, ...] = ("arxiv", "nature", "joule", "elsevier", "ieee", "dataset")
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
@@ -45,14 +47,16 @@ def load_settings() -> Settings:
     site_title = os.environ.get("SITE_TITLE", "每日论文精选推送")
     site_subtitle = os.environ.get(
         "SITE_SUBTITLE",
-        "聚焦近三天 arXiv 与重点能源电力期刊的新论文，按相关性、质量与时效综合排序。",
+        "聚焦近三天 arXiv 与重点能源电力期刊的新论文，并追踪近期公开数据集。",
     )
     site_base_url = os.environ.get("SITE_BASE_URL", "https://lelouchsola.github.io/arXiv-Daily-Summarizer/").strip()
     subscribe_url = os.environ.get("SUBSCRIBE_URL")
     max_results = int(os.environ.get("MAX_RESULTS", "20"))
     max_results_per_section = int(os.environ.get("MAX_RESULTS_PER_SECTION", "10"))
+    max_dataset_results = int(os.environ.get("MAX_DATASET_RESULTS", "5"))
     crossref_latest_rows = int(os.environ.get("CROSSREF_LATEST_ROWS", "50"))
     crossref_max_age_days = int(os.environ.get("CROSSREF_MAX_AGE_DAYS", "60"))
+    dataset_lookback_days = int(os.environ.get("DATASET_LOOKBACK_DAYS", "14"))
     arxiv_page_size = int(os.environ.get("ARXIV_PAGE_SIZE", "25"))
     arxiv_delay_seconds = float(os.environ.get("ARXIV_DELAY_SECONDS", "6.0"))
     arxiv_num_retries = int(os.environ.get("ARXIV_NUM_RETRIES", "1"))
@@ -65,7 +69,7 @@ def load_settings() -> Settings:
     )
     enabled_sources = tuple(
         source.strip()
-        for source in os.environ.get("ENABLED_SOURCES", "arxiv,nature,joule,elsevier,ieee").split(",")
+        for source in os.environ.get("ENABLED_SOURCES", "arxiv,nature,joule,elsevier,ieee,dataset").split(",")
         if source.strip()
     )
 
@@ -175,6 +179,34 @@ def load_settings() -> Settings:
             journal_weight=1.15,
             group_key="core_ieee",
         ),
+        JournalSourceConfig(
+            source_key="dataset",
+            journal_title="Scientific Data",
+            issns=("2052-4463",),
+            journal_weight=0.65,
+            group_key="datasets",
+        ),
+        JournalSourceConfig(
+            source_key="dataset",
+            journal_title="IEEE Data Descriptions",
+            issns=("2995-4274",),
+            journal_weight=0.65,
+            group_key="datasets",
+        ),
+        JournalSourceConfig(
+            source_key="dataset",
+            journal_title="Data in Brief",
+            issns=("2352-3409",),
+            journal_weight=0.55,
+            group_key="datasets",
+        ),
+        JournalSourceConfig(
+            source_key="dataset",
+            journal_title="Earth System Science Data",
+            issns=("1866-3516",),
+            journal_weight=0.55,
+            group_key="datasets",
+        ),
     )
 
     return Settings(
@@ -185,6 +217,7 @@ def load_settings() -> Settings:
         subscribe_url=subscribe_url.strip() if subscribe_url and subscribe_url.strip() else None,
         max_results=max_results,
         max_results_per_section=max_results_per_section,
+        max_dataset_results=max_dataset_results,
         arxiv_categories=arxiv_categories,
         max_results_per_arxiv_category=max_results * 10,
         arxiv_page_size=arxiv_page_size,
@@ -192,6 +225,7 @@ def load_settings() -> Settings:
         arxiv_num_retries=arxiv_num_retries,
         crossref_latest_rows=crossref_latest_rows,
         crossref_max_age_days=crossref_max_age_days,
+        dataset_lookback_days=dataset_lookback_days,
         summary_count=summary_count,
         lookback_days=lookback_days,
         enabled_sources=enabled_sources,
